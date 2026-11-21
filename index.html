@@ -229,6 +229,10 @@ th.nm{z-index:3;background:var(--card2)}
 
   <div class="card hide" id="setCard">
     <h3>⚙️ الإعدادات <span class="mut" id="verLbl"></span></h3>
+    <div class="mut" style="margin-bottom:6px">🔠 حجم العرض</div>
+    <div class="chips" id="zoomChips" style="padding-top:0;margin-bottom:10px">
+      <button class="chip" data-z="0.85">صغير</button><button class="chip" data-z="0.92">متوسط</button><button class="chip" data-z="1">عادي</button><button class="chip" data-z="1.1">كبير</button>
+    </div>
     <div class="mut">رابط الشيت (<b>Apps Script URL</b>) بيتحط مرة واحدة بس</div>
     <input type="url" id="apiIn" placeholder="https://script.google.com/macros/s/.../exec" style="margin:8px 0" dir="ltr">
     <div class="row"><button class="btn" id="apiSave">حفظ واختبار</button><button class="btn ghost" id="devInfo">📱 معلومات الجهاز</button><button class="btn ghost" id="setClose">قفل</button></div>
@@ -302,7 +306,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 38;
+const APP_V = 39;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;
@@ -347,6 +351,10 @@ const S = {
 
 // روابط نشر قديمة اتأرشفت — لو متسجلة في الإعدادات تتبدل بالرابط الحالي
 if(!S.api || /AKfycbwuEK8g|GMryLww/.test(S.api)){ S.api = DEFAULT_API; LS.set('api', S.api); }
+/* ---------- حجم العرض ---------- */
+function applyZoom(){ const z=+LS.get('zoom', 0.92); document.body.style.zoom=z; document.querySelectorAll('#zoomChips .chip').forEach(c=>c.classList.toggle('on', +c.dataset.z===z)); }
+document.getElementById('zoomChips').addEventListener('click', e=>{ const c=e.target.closest('[data-z]'); if(!c) return; LS.set('zoom', +c.dataset.z); applyZoom(); });
+applyZoom();
 /* ---------- أدوات ---------- */
 function toast(msg, err){ const t=document.createElement('div'); t.className='toast'+(err?' err':''); t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(), err?4200:2200); }
 async function api(action, p={}){

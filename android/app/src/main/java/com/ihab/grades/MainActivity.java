@@ -88,6 +88,7 @@ public class MainActivity extends Activity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
+        s.setTextZoom(100); // تجاهل تكبير الخط بتاع الموبايل (التطبيق ليه حجم عرض خاص بيه في الإعدادات)
         s.setDatabaseEnabled(true);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
         s.setUserAgentString(s.getUserAgentString() + " GradesApp");
