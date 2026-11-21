@@ -76,6 +76,9 @@ main{padding:12px 16px;max-width:760px;margin:auto;padding-bottom:110px}
 .cab .cnt{flex:1;font-size:18px;font-weight:800;color:var(--acc);padding:0 6px}
 .cab .ic{width:44px;height:44px;border-radius:12px;border:0;background:none;font-size:21px;display:grid;place-items:center;color:var(--txt)}
 .cab .ic:active{background:#2a3f1d}
+.rarr{display:flex;gap:6px;margin-inline-start:auto}
+.rarr button{width:42px;height:38px;border-radius:10px;border:1px solid #2f4a1c;background:#1b2a12;font-size:18px;color:var(--acc)}
+.rarr button:active{background:#2a3f1d}
 .snack{position:fixed;left:12px;right:12px;bottom:84px;z-index:35;display:flex;align-items:center;gap:8px;background:#e7f0e9;color:#0b120d;border-radius:12px;padding:8px 8px 8px 14px;box-shadow:0 6px 18px rgba(0,0,0,.45);max-width:740px;margin:auto}
 .snack b{flex:1;font-size:14px}
 .snack .btn{padding:8px 12px;font-size:14px}
@@ -284,7 +287,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 31;
+const APP_V = 32;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;
@@ -851,8 +854,11 @@ async function doGender(names, g){
 }
 function ordStart(){ if(ORD.cls!==S.cls || !ORD.names){ ORD.cls=S.cls; ORD.names=S.d.names.slice(); ORD.late=(S.d.late||[]).slice(); } }
 const arCmp=(a,b)=>AR_NORM(a).localeCompare(AR_NORM(b),'ar');
-function ordMove(from,to){ ordStart(); to=Math.max(0,Math.min(ORD.names.length-1,to)); const [x]=ORD.names.splice(from,1); ORD.names.splice(to,0,x); renderStu();
-  setTimeout(()=>{ const el=document.querySelector(`#stuBody .sitem[data-i="${to}"]`); if(el) el.scrollIntoView({block:'center',behavior:'smooth'}); },30); }
+function ordMove(from,to){ ordStart(); to=Math.max(0,Math.min(ORD.names.length-1,to)); if(to===from) return;
+  const old=document.querySelector(`#stuBody .sitem[data-i="${from}"]`), top0=old?old.getBoundingClientRect().top:null;
+  const [x]=ORD.names.splice(from,1); ORD.names.splice(to,0,x); renderStu();
+  const el=document.querySelector(`#stuBody .sitem[data-i="${to}"]`);
+  if(el){ if(top0!=null) window.scrollBy(0, el.getBoundingClientRect().top-top0); else el.scrollIntoView({block:'center'}); } }
 /* ---------- قايمة من تحت (Bottom sheet) + شريط التحديد فوق ---------- */
 function openSheet(title, html){ $('#sheetT').textContent=title; $('#sheetB').innerHTML=html; $('#sheet').classList.remove('hide'); }
 function closeSheet(){ $('#sheet').classList.add('hide'); }
@@ -958,6 +964,7 @@ async function selAction(act, el){
       return;
     }
   }
+  if(act.startsWith('rup:')||act.startsWith('rdn:')){ const i=+act.slice(4); ordMove(i, i+(act[1]==='u'?-1:1)); return; }
   if(act.startsWith('mvc:')){ const to=act.slice(4); confirmSheet('🔀 نقل', `نقل <b>${S.sel.size}</b> طالب لفصل <b>${dispName(to)}</b> بدرجاتهم؟`, 'نقل', 'mvgo:'+to); return; }
   if(act.startsWith('mvgo:')){ const to=act.slice(5); el.disabled=true; el.textContent='⏳ بينقل…'; await doMove(to,[...S.sel],el,true); closeSheet(); return; }
 }
@@ -983,7 +990,7 @@ function renderStu(){
     ${unk && !P && !S.selMode ? `<button class="btn ghost sm" id="selGo" style="width:100%;margin-bottom:8px">👦👧 ${unk} طالب من غير تحديد — حدّد الأولاد والبنات</button>`:''}
     ${S.selMode?'':`<div class="row" style="margin-bottom:6px"><button class="btn sm" id="sortBook">📒 أبجدي دفتر (أولاد ثم بنات)</button><button class="btn ghost sm" id="sortA">🔤 أبجدي (المتأخرين في الآخر)</button><button class="btn ghost sm" id="sortAll">🔤 أبجدي للكل</button></div>
     <div class="mut" style="margin-bottom:6px">👆 اضغط مطول على أي اسم عشان تبدأ التحديد</div>`}`
-    + names.map((n,i)=>(S.gf!=='all' && gOf(n)!==S.gf) ? '' : `<div class="sitem ${S.sel.has(n)?'sel':''}" data-i="${i}" data-name="${esc(n)}"><div class="sline">${S.selMode?`<input type="checkbox" class="selchk" data-sel="${esc(n)}" ${S.sel.has(n)?'checked':''}>`:''}<span class="mut">${i+1}</span><span class="nm" data-lp="${i}">${gIcon(n)}${esc(n)}${late.has(n)?'<span class="late">🕓 متأخر</span>':''}</span></div></div>`).join('')
+    + names.map((n,i)=>(S.gf!=='all' && gOf(n)!==S.gf) ? '' : `<div class="sitem ${S.sel.has(n)?'sel':''}" data-i="${i}" data-name="${esc(n)}"><div class="sline">${S.selMode?`<input type="checkbox" class="selchk" data-sel="${esc(n)}" ${S.sel.has(n)?'checked':''}>`:''}<span class="mut">${i+1}</span><span class="nm" data-lp="${i}">${gIcon(n)}${esc(n)}${late.has(n)?'<span class="late">🕓 متأخر</span>':''}</span>${S.selMode&&S.sel.has(n)?`<span class="rarr"><button data-act="rup:${i}" title="لفوق">▲</button><button data-act="rdn:${i}" title="لتحت">▼</button></span>`:''}</div></div>`).join('')
     + (P ? `<div class="snack"><b>↕️ الترتيب اتغير</b><button class="btn ghost" id="ordCancel">إلغاء</button><button class="btn" id="ordSave">حفظ</button></div>`:'')
     + (S.selMode ? `<div class="cab">
         <button class="ic" data-act="exit" title="خروج">✖</button>
