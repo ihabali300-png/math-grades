@@ -1,13 +1,14 @@
 /**
  * سجل الدرجات — كود الشيت (Google Apps Script)
- * كل فصل = تاب لوحده. كل أسبوع = 11 عمود:
+ * كل فصل = تاب لوحده. كل أسبوع = 12 عمود:
  * د1 ك حصة | د1 ك واجب | د2 ك حصة | د2 ك واجب | د3 ك حصة | د3 ك واجب |
- * متوسط ك حصة | متوسط ك واجب | تقييم أسبوعي | سلوك ومواظبة | المجموع
+ * متوسط ك حصة | متوسط ك واجب | تقييم أسبوعي | سلوك ومواظبة | المجموع | متوسط تراكمي
  * المتوسطات والمجموع معادلات جوه الشيت (بتتحسب لوحدها).
  */
 const TOKEN = 'hana-math-2027';
-const W = 11, HDR = 2, FIRST_COL = 3;
-const SUB = ['د1 ك حصة','د1 ك واجب','د2 ك حصة','د2 ك واجب','د3 ك حصة','د3 ك واجب','متوسط ك حصة','متوسط ك واجب','تقييم أسبوعي /10','سلوك ومواظبة /5','المجموع /25'];
+const W = 12, OLD_W = 11, HDR = 2, FIRST_COL = 3;
+const SUB = ['د1 ك حصة','د1 ك واجب','د2 ك حصة','د2 ك واجب','د3 ك حصة','د3 ك واجب','متوسط ك حصة','متوسط ك واجب','تقييم أسبوعي /10','سلوك ومواظبة /5','المجموع /25','متوسط تراكمي /25'];
+const CUM = 'متوسط تراكمي /25';
 const COLORS = ['#e8f5e9','#e3f2fd'];
 
 function doGet() { return out({ ok: true, msg: 'grades api' }); }
@@ -36,6 +37,7 @@ function tabName(n) { return String(n).trim().replace(/[\\\/\?\*\[\]:]/g, '-'); 
 function getSh(ss, name) {
   const sh = ss.getSheetByName(tabName(name));
   if (!sh || !isClass(sh)) throw new Error('الفصل مش موجود: ' + name);
+  upgrade(sh);
   return sh;
 }
 function nStudents(sh) { return Math.max(0, sh.getLastRow() - HDR); }
@@ -49,6 +51,47 @@ function setFormulas(sh, row, count, k) {
   const avg = '=IF(COUNT(RC[-6],RC[-4],RC[-2])=0,"",ROUND(AVERAGE(RC[-6],RC[-4],RC[-2]),1))';
   sh.getRange(row, s + 6, count, 2).setFormulaR1C1(avg);
   sh.getRange(row, s + 10, count, 1).setFormulaR1C1('=IF(COUNT(RC[-4]:RC[-1])=0,"",ROUND(SUM(RC[-4]:RC[-1]),1))');
+}
+
+// المتوسط التراكمي: متوسط مجموع الأسبوع ده واللي قبله (الأسابيع اللي فيها درجات بس)
+function cumFormula(k) {
+  const refs = [];
+  for (let j = 0; j <= k; j++) refs.push('RC[' + (-1 - j * W) + ']');
+  const r = refs.join(',');
+  return '=IF(COUNT(' + r + ')=0,"",ROUND(AVERAGE(' + r + '),1))';
+}
+function rewriteCum(sh) {
+  const n = nStudents(sh), k = nWeeks(sh);
+  for (let i = 0; i < k; i++) {
+    sh.getRange(HDR, startCol(i) + 11).setValue(CUM);
+    if (n) sh.getRange(HDR + 1, startCol(i) + 11, n, 1).setFormulaR1C1(cumFormula(i));
+  }
+}
+// ترقية الشيت القديم (11 عمود للأسبوع) للشكل الجديد (12 عمود)
+function upgrade(sh) {
+  const lastCol = sh.getLastColumn();
+  if (lastCol < FIRST_COL + OLD_W - 1) return;
+  if (sh.getRange(HDR, FIRST_COL + 11).getDisplayValue() === CUM) return;
+  if (sh.getRange(HDR, FIRST_COL + 10).getDisplayValue() !== 'المجموع /25') return;
+  const k = Math.floor((lastCol - 2) / OLD_W);
+  for (let i = k - 1; i >= 0; i--) {
+    const after = FIRST_COL + i * OLD_W + 10;
+    sh.insertColumnAfter(after);
+    sh.getRange(1, FIRST_COL + i * OLD_W, 1, OLD_W).breakApart();
+  }
+  for (let i = 0; i < k; i++) {
+    const s = startCol(i);
+    const label = sh.getRange(1, s).getDisplayValue();
+    sh.getRange(1, s, 1, W).merge().setValue(label);
+    styleCum(sh, i);
+  }
+  rewriteCum(sh);
+}
+function styleCum(sh, k) {
+  const c = startCol(k) + 11, n = nStudents(sh);
+  sh.setColumnWidth(c, 70);
+  sh.getRange(HDR, c).setBackground('#ffcc80').setFontWeight('bold').setWrap(true).setHorizontalAlignment('center');
+  if (n) sh.getRange(HDR + 1, c, n, 1).setHorizontalAlignment('center').setFontWeight('bold').setFontColor('#bf360c');
 }
 
 function renumber(sh) {
@@ -114,6 +157,8 @@ const ACTIONS = {
       sh.getRange(HDR + 1, s + 10, n, 1).setFontWeight('bold');
       setFormulas(sh, HDR + 1, n, k);
     }
+    styleCum(sh, k);
+    rewriteCum(sh);
     sh.getRange(1, s, Math.max(HDR + n, HDR), W).setBorder(true, true, true, true, null, null, '#455a64', SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
     return { week: k };
   },
@@ -124,6 +169,7 @@ const ACTIONS = {
     if (!(k >= 0 && k < nWeeks(sh))) throw new Error('الأسبوع مش موجود');
     if (b.label && sh.getRange(1, startCol(k)).getDisplayValue() !== b.label) throw new Error('الشيت اتغير — حدّث الصفحة');
     sh.deleteColumns(startCol(k), W);
+    rewriteCum(sh);
     return {};
   },
 
@@ -151,6 +197,7 @@ const ACTIONS = {
       sh.getRange(row, startCol(i), names.length, W).setHorizontalAlignment('center');
       sh.getRange(row, startCol(i) + 10, names.length, 1).setFontWeight('bold');
     }
+    rewriteCum(sh);
     return {};
   },
 
