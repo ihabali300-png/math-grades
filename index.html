@@ -111,8 +111,8 @@ th.nm{z-index:3;background:var(--card2)}
 .pp th,.pp td{border:1px solid #000;padding:0 1mm;font-size:10pt;text-align:center;height:5.4mm;overflow:hidden;white-space:nowrap;background:#fff;color:#000;position:static}
 .pp td.nm{text-align:right;font-size:10pt}
 .pp .wk{font-size:10pt;font-weight:700;height:7mm}
-.pp .vh{height:23mm;vertical-align:bottom;padding:1mm 0}
-.pp .vh span{writing-mode:vertical-rl;transform:rotate(180deg);display:inline-block;font-size:9.5pt;font-weight:700;white-space:normal;line-height:1.15;max-height:22mm}
+.pp .vh{height:23mm;padding:0;position:relative;overflow:visible}
+.pp .vh span{position:absolute;top:50%;left:50%;width:21mm;transform:translate(-50%,-50%) rotate(-90deg);display:block;font-size:9.5pt;font-weight:700;white-space:normal;line-height:1.15;text-align:right}
 .pp .mx{font-size:9pt;height:5mm}
 .pp .eb{border-left:2.5px solid #000}
 .pp .hb th,.pp tr.hb td{border-bottom:2.5px solid #000}
@@ -211,7 +211,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 9;
+const APP_V = 10;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;                       // أعمدة الأسبوع في الشيت
@@ -477,60 +477,163 @@ function renderRes(){
   h += '</tbody></table></div>';
   $('#resBody').innerHTML = h;
 }
+const COLS=[[7,'ك واجب',5],[6,'ك حصة',5],[8,'تقييم أسبوعي',10],[9,'سلوك ومواظبة',5],[10,'المجموع',25]];
+function getPH(){ return LS.get('ph',{dir:'مديرية التربية والتعليم بأسوان',adm:'إدارة إدفو التعليمية',sch:'العوضلاب الابتدائية',sub:'الرياضيات'}); }
 function renderPrint(){
-  const d=S.d; let h='';
-  // كارت الطباعة
-  const pages=[]; for(let k=0;k<d.weeks.length;k+=4) pages.push(k);
-  const P=LS.get('ph',{dir:'مديرية التربية والتعليم بأسوان',adm:'إدارة إدفو التعليمية',sch:'العوضلاب الابتدائية',sub:'الرياضيات'});
-  h += `<div class="card"><h3>🖨️ طباعة زي الدفتر (A4 بالعرض)</h3>
-    ${pages.map((k,n)=>`<label class="pchk"><input type="checkbox" class="pg" value="${k}" ${n===pages.length-1?'checked':''}> صفحة ${n+1}: ${esc(d.weeks[k])} ← ${esc(d.weeks[Math.min(k+3,d.weeks.length-1)])}</label>`).join('')}
-    <label class="pchk"><input type="checkbox" id="pgTerm"> 🏁 صفحة اختبارات التيرم</label>
+  const P=getPH(), sel=LS.get('prSel',{pm:'last',from:1,to:1,pick:'',term:false});
+  let h = `<div class="card"><h3>🏫 الفصول</h3>
+    <label class="pchk"><input type="checkbox" id="pcAll"> كل الفصول</label>
+    ${S.classes.map(c=>`<label class="pchk"><input type="checkbox" class="pc" value="${esc(c)}" ${c===S.cls?'checked':''}> فصل ${esc(dispName(c))}</label>`).join('')}
+  </div>
+  <div class="card"><h3>📄 الصفحات <span class="mut">(كل صفحة = 4 أسابيع)</span></h3>
+    <label class="pchk"><input type="radio" name="pm" value="all" ${sel.pm==='all'?'checked':''}> كل الصفحات</label>
+    <label class="pchk"><input type="radio" name="pm" value="last" ${sel.pm==='last'?'checked':''}> آخر صفحة بس</label>
+    <label class="pchk"><input type="radio" name="pm" value="range" ${sel.pm==='range'?'checked':''}> من صفحة <input type="number" id="pFrom" min="1" value="${sel.from}" style="width:64px;padding:6px"> لصفحة <input type="number" id="pTo" min="1" value="${sel.to}" style="width:64px;padding:6px"></label>
+    <label class="pchk"><input type="radio" name="pm" value="pick" ${sel.pm==='pick'?'checked':''}> صفحات معينة <input type="text" id="pPick" placeholder="مثال: 1، 3، 4" value="${esc(sel.pick)}" style="width:130px;padding:6px"></label>
+    <label class="pchk"><input type="checkbox" id="pgTerm" ${sel.term?'checked':''}> 🏁 صفحة اختبارات التيرم</label>
+    <div class="mut" id="pInfo" style="margin-top:4px"></div>
     <details style="margin:6px 0 10px"><summary class="mut">✏️ بيانات رأس الصفحة</summary>
       <input type="text" id="phDir" value="${esc(P.dir)}" style="margin-top:6px"><input type="text" id="phAdm" value="${esc(P.adm)}" style="margin-top:6px"><input type="text" id="phSch" value="${esc(P.sch)}" style="margin-top:6px"><input type="text" id="phSub" value="${esc(P.sub)}" style="margin-top:6px">
     </details>
-    <button class="btn" id="doPrint" style="width:100%">🖨️ طباعة / حفظ PDF</button></div>`;
-  h += `<div class="card"><h3>👁️ شكل الصفحة</h3><div class="pv" id="pvBox"></div></div>`;
+    <div class="g3">
+      <button class="btn ghost" data-out="print">🖨️ طباعة</button>
+      <button class="btn ghost" data-out="save">📄 حفظ PDF</button>
+      <button class="btn" data-out="share" style="background:#25d366;color:#04230f">🟢 واتساب</button>
+    </div>
+  </div>
+  <div class="card"><h3>👁️ معاينة</h3><div class="pv" id="pvBox"></div></div>`;
   $('#printBody').innerHTML = h;
-  if(!d.weeks.length) $('#pgTerm').checked = true;
   updPreview();
 }
-function updPreview(){ const b=$('#pvBox'); if(b) b.innerHTML = buildPrint() || '<div style="color:#555;padding:20px;text-align:center">اختار صفحة</div>'; }
-function ppHead(P, extra){
-  return `<div class="pph"><div>${esc(P.dir)}<br>${esc(P.adm)}</div><div class="c">رصد درجات فصل : ${esc(S.cls.replace(/-/g,'/'))}${extra||''}</div><div class="l">مدرسة / ${esc(P.sch)}<br>مادة / ${esc(P.sub)}</div></div>`;
-}
-function buildPrint(){
-  const d=S.d;
+function readSel(){
   const P={dir:$('#phDir').value.trim(),adm:$('#phAdm').value.trim(),sch:$('#phSch').value.trim(),sub:$('#phSub').value.trim()}; LS.set('ph',P);
-  const starts=[...document.querySelectorAll('.pg:checked')].map(x=>+x.value);
-  const COLS=[[7,'ك واجب',5],[6,'ك حصة',5],[8,'تقييم أسبوعي',10],[9,'سلوك ومواظبة',5],[10,'المجموع',25]];
-  let out='';
-  starts.forEach(k0=>{
-    const ks=[0,1,2,3].map(j=>k0+j);
-    let t=`<div class="pp">${ppHead(P)}<table><colgroup><col style="width:8mm"><col style="width:58mm">${ks.map(()=>COLS.map(()=>'<col>').join('')).join('')}<col style="width:7mm"></colgroup>`;
-    t+=`<tr><th rowspan="3" style="font-size:12pt">م</th><th rowspan="3" class="eb" style="font-size:16pt">الاســــم</th>${ks.map(k=>`<th colspan="5" class="wk eb">${k<d.weeks.length?esc(d.weeks[k]):'الأسبوع'}</th>`).join('')}<th rowspan="3"></th></tr>`;
-    t+=`<tr>${ks.map(()=>COLS.map((c,n)=>`<th class="vh ${n===4?'eb':''}"><span>${c[1]}</span></th>`).join('')).join('')}</tr>`;
-    t+=`<tr class="hb">${ks.map(()=>COLS.map((c,n)=>`<td class="mx ${n===4?'eb':''}">${c[2]}</td>`).join('')).join('')}</tr>`;
-    d.names.forEach((nm,i)=>{
-      t+=`<tr><td>${i+1}</td><td class="nm eb">${esc(nm)}</td>${ks.map(k=>{ const b=k<d.weeks.length?blk(i,k):null; return COLS.map((c,n)=>`<td class="${n===4?'eb':''}" ${n===4?'style="font-weight:700"':''}>${b&&b[c[0]]!==''?b[c[0]]:''}</td>`).join(''); }).join('')}<td></td></tr>`;
-    });
-    out+=t+'</table></div>';
-  });
-  if($('#pgTerm').checked){
-    const TC=[['الشهر الأول',15,0],['الشهر الثاني',15,1],['متوسط الشهرين',15,2],['متوسط الأسابيع',25,3],['المجموع',40,4]];
-    let t=`<div class="pp">${ppHead(P,' — اختبارات التيرم')}<table style="width:70%;margin:auto"><colgroup><col style="width:9mm"><col style="width:62mm">${TC.map(()=>'<col>').join('')}</colgroup>`;
-    t+=`<tr><th rowspan="2">م</th><th rowspan="2" class="eb" style="font-size:14pt">الاســــم</th>${TC.map(c=>`<th class="wk">${c[0]}</th>`).join('')}</tr>`;
-    t+=`<tr class="hb">${TC.map(c=>`<td class="mx">${c[1]}</td>`).join('')}</tr>`;
-    d.names.forEach((nm,i)=>{ const r=termCalc(i); t+=`<tr><td>${i+1}</td><td class="nm eb">${esc(nm)}</td>${TC.map(c=>`<td ${c[2]===4?'style="font-weight:700"':''}>${r[c[2]]!==''?r[c[2]]:''}</td>`).join('')}</tr>`; });
-    out+=t+'</table></div>';
-  }
-  return out;
+  const pm=(document.querySelector('input[name=pm]:checked')||{}).value||'last';
+  const sel={pm, from:+$('#pFrom').value||1, to:+$('#pTo').value||1, pick:$('#pPick').value, term:$('#pgTerm').checked};
+  LS.set('prSel',sel);
+  const classes=[...document.querySelectorAll('.pc:checked')].map(x=>x.value);
+  return {P, sel, classes};
 }
-$('#printBody').addEventListener('change', e=>{ if(e.target.matches('input')) updPreview(); });
-$('#printBody').addEventListener('click', e=>{
-  if(e.target.id!=='doPrint') return;
-  const html=buildPrint(); if(!html) return toast('اختار صفحة واحدة على الأقل', true);
-  $('#printArea').innerHTML=html;
-  setTimeout(()=>{ if(window.AndroidPrint && AndroidPrint.print) AndroidPrint.print('سجل الدرجات ' + S.cls); else window.print(); }, 200);
+function pagesFor(d, sel){
+  const n=Math.max(1, Math.ceil(d.weeks.length/4)); let list=[];
+  if(sel.pm==='all') for(let i=1;i<=n;i++) list.push(i);
+  else if(sel.pm==='last') list=[n];
+  else if(sel.pm==='range'){ const a=Math.max(1,Math.min(sel.from,sel.to)), b=Math.min(n,Math.max(sel.from,sel.to)); for(let i=a;i<=b;i++) list.push(i); }
+  else list=[...new Set(String(sel.pick).replace(/[٠-٩]/g,c=>'٠١٢٣٤٥٦٧٨٩'.indexOf(c)).split(/[^0-9]+/).filter(Boolean).map(Number))].filter(x=>x>=1&&x<=n).sort((a,b)=>a-b);
+  return list;
+}
+function procClass(j){
+  const d={names:j.names, weeks:j.weeks, vals:j.vals.map(r=>r.slice()), term:(j.term||[]).map(r=>r.slice()), url:j.url};
+  return d;
+}
+async function classData(c){
+  if(c===S.cls && S.d) return S.d;
+  try{ const j=await api('getClass',{cls:c}); const d=procClass(j); withD(c,d,()=>d.names.forEach((_,i)=>cumRow(i))); LS.set('d3_'+c,d); return d; }
+  catch(e){ const cd=LS.get('d3_'+c,null); if(cd) return cd; throw e; }
+}
+function withD(cls, d, fn){ const sd=S.d, sc=S.cls; S.d=d; S.cls=cls; try{ return fn(); } finally{ S.d=sd; S.cls=sc; } }
+function ppHead(P, cls, extra){
+  return `<div class="pph"><div>${esc(P.dir)}<br>${esc(P.adm)}</div><div class="c">رصد درجات فصل : ${esc(dispName(cls))}${extra||''}</div><div class="l">مدرسة / ${esc(P.sch)}<br>مادة / ${esc(P.sub)}</div></div>`;
+}
+function buildClass(cls, d, pages, term, P){
+  return withD(cls, d, ()=>{
+    let out='';
+    pages.forEach(pn=>{
+      const k0=(pn-1)*4, ks=[0,1,2,3].map(j=>k0+j);
+      let t=`<div class="pp">${ppHead(P,cls)}<table><colgroup><col style="width:8mm"><col style="width:58mm">${ks.map(()=>COLS.map(()=>'<col>').join('')).join('')}<col style="width:7mm"></colgroup>`;
+      t+=`<tr><th rowspan="3" style="font-size:12pt">م</th><th rowspan="3" class="eb" style="font-size:16pt">الاســــم</th>${ks.map(k=>`<th colspan="5" class="wk eb">${k<d.weeks.length?esc(d.weeks[k]):'الأسبوع'}</th>`).join('')}<th rowspan="3"></th></tr>`;
+      t+=`<tr>${ks.map(()=>COLS.map((c,n)=>`<th class="vh ${n===4?'eb':''}"><span>${c[1]}</span></th>`).join('')).join('')}</tr>`;
+      t+=`<tr class="hb">${ks.map(()=>COLS.map((c,n)=>`<td class="mx ${n===4?'eb':''}">${c[2]}</td>`).join('')).join('')}</tr>`;
+      d.names.forEach((nm,i)=>{
+        t+=`<tr><td>${i+1}</td><td class="nm eb">${esc(nm)}</td>${ks.map(k=>{ const b=k<d.weeks.length?blk(i,k):null; return COLS.map((c,n)=>`<td class="${n===4?'eb':''}" ${n===4?'style="font-weight:700"':''}>${b&&b[c[0]]!==''?b[c[0]]:''}</td>`).join(''); }).join('')}<td></td></tr>`;
+      });
+      out+=t+'</table></div>';
+    });
+    if(term){
+      const TC=[['الشهر الأول',15,0],['الشهر الثاني',15,1],['متوسط الشهرين',15,2],['متوسط الأسابيع',25,3],['المجموع',40,4]];
+      let t=`<div class="pp">${ppHead(P,cls,' — اختبارات التيرم')}<table style="width:70%;margin:auto"><colgroup><col style="width:9mm"><col style="width:62mm">${TC.map(()=>'<col>').join('')}</colgroup>`;
+      t+=`<tr><th rowspan="2">م</th><th rowspan="2" class="eb" style="font-size:14pt">الاســــم</th>${TC.map(c=>`<th class="wk">${c[0]}</th>`).join('')}</tr>`;
+      t+=`<tr class="hb">${TC.map(c=>`<td class="mx">${c[1]}</td>`).join('')}</tr>`;
+      d.names.forEach((nm,i)=>{ const r=termCalc(i); t+=`<tr><td>${i+1}</td><td class="nm eb">${esc(nm)}</td>${TC.map(c=>`<td ${c[2]===4?'style="font-weight:700"':''}>${r[c[2]]!==''?r[c[2]]:''}</td>`).join('')}</tr>`; });
+      out+=t+'</table></div>';
+    }
+    return out;
+  });
+}
+async function buildAll(){
+  const {P, sel, classes}=readSel();
+  if(!classes.length) return {html:'', count:0, classes};
+  let html='', count=0;
+  for(const c of classes){ const d=await classData(c); const pg=pagesFor(d, sel); html+=buildClass(c, d, pg, sel.term, P); count+=pg.length+(sel.term?1:0); }
+  return {html, count, classes};
+}
+let pvT=0;
+async function updPreview(){
+  const my=++pvT, b=$('#pvBox'); if(!b) return;
+  try{ const r=await buildAll(); if(my!==pvT) return;
+    $('#pInfo').textContent = r.count ? `📄 ${r.count} صفحة` : '';
+    b.innerHTML = r.html || '<div style="color:#555;padding:20px;text-align:center">اختار فصل وصفحة</div>';
+  }catch(e){ b.innerHTML=`<div style="color:#a00;padding:20px;text-align:center">${esc(e.message)}</div>`; }
+}
+/* ---- PDF ---- */
+let libsP=null;
+function loadLibs(){
+  if(window.jspdf && window.html2canvas) return Promise.resolve();
+  if(libsP) return libsP;
+  const add=src=>new Promise((ok,no)=>{ const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=()=>no(new Error('مقدرتش أحمّل أداة الـ PDF — اتأكد من النت')); document.head.appendChild(s); });
+  libsP=Promise.all([add('lib/jspdf.umd.min.js'), add('lib/html2canvas.min.js')]).catch(e=>{ libsP=null; throw e; });
+  return libsP;
+}
+async function makePdf(html){
+  await loadLibs();
+  const st=document.createElement('div');
+  st.style.cssText='position:fixed;left:-20000px;top:0;width:281mm;background:#fff';
+  st.innerHTML=html; document.body.appendChild(st);
+  try{
+    const pdf=new jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4',compress:true});
+    const pages=[...st.querySelectorAll('.pp')];
+    for(let i=0;i<pages.length;i++){
+      const cv=await html2canvas(pages[i],{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false});
+      let w=281, h=cv.height*w/cv.width; if(h>194){ h=194; w=cv.width*h/cv.height; }
+      if(i) pdf.addPage('a4','landscape');
+      pdf.addImage(cv.toDataURL('image/jpeg',0.9),'JPEG',(297-w)/2,8,w,h);
+    }
+    return pdf.output('blob');
+  } finally { st.remove(); }
+}
+function blobB64(blob){ return new Promise(ok=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(',')[1]); r.readAsDataURL(blob); }); }
+$('#printBody').addEventListener('change', e=>{
+  if(e.target.id==='pcAll'){ document.querySelectorAll('.pc').forEach(x=>x.checked=e.target.checked); }
+  if(e.target.matches('#pFrom,#pTo')) document.querySelector('input[name=pm][value=range]').checked=true;
+  if(e.target.matches('#pPick')) document.querySelector('input[name=pm][value=pick]').checked=true;
+  if(e.target.matches('input')) updPreview();
+});
+$('#printBody').addEventListener('click', async e=>{
+  const bt=e.target.closest('[data-out]'); if(!bt) return;
+  const mode=bt.dataset.out, old=bt.textContent;
+  bt.disabled=true; bt.textContent='⏳ بيجهّز…';
+  try{
+    const r=await buildAll(); if(!r.html) throw new Error('اختار فصل وصفحة واحدة على الأقل');
+    const name=`درجات ${r.classes.map(dispName).join(' و ').replace(/\//g,'-')} ${new Date().toISOString().slice(0,10)}.pdf`;
+    if(mode==='print'){
+      $('#printArea').innerHTML=r.html;
+      setTimeout(()=>{ if(window.AndroidPrint && AndroidPrint.print) AndroidPrint.print(name); else window.print(); },200);
+    } else {
+      const blob=await makePdf(r.html);
+      const A=window.AndroidPrint;
+      if(A && typeof A.sharePdf==='function'){
+        const b64=await blobB64(blob);
+        if(mode==='share') A.sharePdf(b64,name); else A.savePdf(b64,name);
+      } else if(A){
+        toast('نزّل الـ APK الجديد عشان الحفظ والمشاركة يشتغلوا', true);
+      } else {
+        const file=new File([blob],name,{type:'application/pdf'});
+        if(mode==='share' && navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:name}); }
+        else { const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+          toast(mode==='share'?'✅ اتحمل الملف — ابعته من الواتساب':'✅ اتحفظ الملف في التنزيلات'); }
+      }
+    }
+  }catch(er){ if(er && er.name!=='AbortError') toast(er.message||'حصل خطأ', true); }
+  bt.disabled=false; bt.textContent=old;
 });
 function renderStu(){
   const d=S.d;
