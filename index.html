@@ -211,7 +211,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 13;
+const APP_V = 14;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;                       // أعمدة الأسبوع في الشيت
@@ -346,7 +346,8 @@ async function loadClasses(){
   if(S.screen==='class' && S.cls) await loadClass();
   if(!S.classes.length && S.api) openAddCls(true);
 }
-function dispName(c){ return String(c).replace(/-/g,'/'); }
+function plainName(c){ return String(c).replace(/-/g,'/'); }
+function dispName(c){ return '\u2066'+plainName(c)+'\u2069'; } // عزل الاتجاه عشان 2/3 ماتتقلبش
 function renderHome(){
   const g=$('#cgrid'); if(!g) return;
   g.innerHTML = S.classes.map(c=>{ const d=LS.get('d3_'+c,null); const meta = d ? `${d.names.length} طالب • ${d.weeks.length} أسبوع` : 'دوس للفتح';
@@ -615,7 +616,7 @@ $('#printBody').addEventListener('click', async e=>{
   bt.disabled=true; bt.textContent='⏳ بيجهّز…';
   try{
     const r=await buildAll(); if(!r.html) throw new Error('اختار فصل وصفحة واحدة على الأقل');
-    const name=`درجات ${r.classes.map(dispName).join(' و ').replace(/\//g,'-')} ${new Date().toISOString().slice(0,10)}.pdf`;
+    const name=`درجات ${r.classes.map(plainName).join(' و ').replace(/\//g,'-')} ${new Date().toISOString().slice(0,10)}.pdf`;
     if(mode==='print'){
       $('#printArea').innerHTML=r.html;
       setTimeout(()=>{ if(window.AndroidPrint && AndroidPrint.print) AndroidPrint.print(name); else window.print(); },200);
@@ -639,7 +640,7 @@ $('#printBody').addEventListener('click', async e=>{
 });
 function renderStu(){
   const d=S.d;
-  let h = `<div class="card"><h3>➕ إضافة طلاب لفصل ${esc(S.cls)}</h3><textarea id="addNames" placeholder="كل اسم في سطر"></textarea><button class="btn" id="addNamesGo" style="margin-top:8px">إضافة</button></div>`;
+  let h = `<div class="card"><h3>➕ إضافة طلاب لفصل ${esc(dispName(S.cls))}</h3><textarea id="addNames" placeholder="كل اسم في سطر"></textarea><button class="btn" id="addNamesGo" style="margin-top:8px">إضافة</button></div>`;
   h += `<div class="card"><h3>👥 الطلاب (${d.names.length})</h3>` + d.names.map((n,i)=>`<div class="sline" data-i="${i}"><span class="mut">${i+1}</span><span class="nm">${esc(n)}</span><button class="btn ghost sm" data-ren="${i}">✏️</button><button class="btn red sm" data-del="${i}">🗑️</button></div>`).join('') + `</div>`;
   if(d.weeks.length) h += `<div class="card"><h3>📅 الأسابيع</h3>` + d.weeks.map((w,k)=>`<div class="sline"><span class="nm">${esc(w)}</span><button class="btn red sm" data-delwk="${k}">🗑️</button></div>`).join('') + `</div>`;
   $('#stuBody').innerHTML = h;
@@ -710,7 +711,7 @@ $('#cgrid').addEventListener('click', async e=>{
   const rn=t.closest('[data-ren-c]');
   if(rn){
     const c=rn.dataset.renC, card=rn.closest('.ccard');
-    if(!rn.dataset.save){ card.querySelector('.cn').innerHTML=`<input type="text" dir="ltr" value="${esc(dispName(c))}">`; rn.textContent='💾 حفظ'; rn.dataset.save=1; card.querySelector('input').focus(); return; }
+    if(!rn.dataset.save){ card.querySelector('.cn').innerHTML=`<input type="text" dir="ltr" value="${esc(plainName(c))}">`; rn.textContent='💾 حفظ'; rn.dataset.save=1; card.querySelector('input').focus(); return; }
     const nn=card.querySelector('input').value.trim(); if(!nn) return;
     rn.disabled=true;
     try{ const j=await api('renameClass',{cls:c,name:nn}); const old=LS.get('d3_'+c,null); if(old){ LS.set('d3_'+j.cls,old); localStorage.removeItem('d3_'+c); } S.q.forEach(x=>{ if(x.cls===c) x.cls=j.cls; }); LS.set('q',S.q); if(S.cls===c) S.cls=j.cls; await loadClasses(); toast('✅ اتعدّل اسم الفصل'); }
