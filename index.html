@@ -58,7 +58,7 @@ main{padding:12px 16px;max-width:760px;margin:auto;padding-bottom:110px}
 .obadge.good{color:var(--acc)} .obadge.warn{color:var(--yel)} .obadge.dup{color:var(--red)}
 .sitem{border-bottom:1px solid var(--line)}
 .sitem:last-child{border-bottom:0}
-.sitem .sline{border-bottom:0;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.sitem .sline{touch-action:pan-y;border-bottom:0;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .sitem.sel{background:#1b2a12;border-radius:10px}
 .smenu{display:flex;flex-wrap:wrap;gap:6px;padding:0 4px 10px}
 .smenu .btn{padding:7px 10px;font-size:13px}
@@ -81,7 +81,7 @@ main{padding:12px 16px;max-width:760px;margin:auto;padding-bottom:110px}
 .rarr button:active{background:#2a3f1d}
 .wkbar{display:flex;gap:6px;align-items:stretch;margin-bottom:10px}
 .wkbar button{border:1px solid var(--line);background:var(--card);border-radius:12px;font-size:18px;min-width:44px;color:var(--txt)}
-.wkbar .wkcur{flex:1;font-size:15px;font-weight:700;padding:10px 8px;background:#1b2a12;border-color:var(--acc);color:var(--acc)}
+.wkbar .wkcur{flex:1;min-width:0;font-size:14px;font-weight:700;padding:10px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;touch-action:pan-y;background:#1b2a12;border-color:var(--acc);color:var(--acc)}
 .wkbar .lk.on{background:#3a1717;border-color:#5b2323;color:var(--red)}
 .wkbar button:disabled{opacity:.3}
 .wkbar .red{background:#3a1717;border-color:#5b2323;color:var(--red);font-size:15px;padding:0 10px}
@@ -302,7 +302,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 37;
+const APP_V = 38;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;
@@ -556,7 +556,8 @@ let wkLP=0, wkFired=false, wkT=null;
 $('#wkChips').addEventListener('pointerdown', e=>{ const b=e.target.closest('[data-wk="pick"]'); if(!b) return; clearTimeout(wkT); wkT=setTimeout(()=>{ wkFired=true; S.wkMenu=true; renderWeeks(); if(navigator.vibrate) try{navigator.vibrate(30);}catch(_){} },500); });
 $('#wkChips').addEventListener('pointerup', ()=>{ clearTimeout(wkT); if(wkFired){ wkFired=false; wkLP=Date.now(); } });
 ['pointercancel','pointerleave'].forEach(ev=>$('#wkChips').addEventListener(ev, ()=>clearTimeout(wkT)));
-$('#wkChips').addEventListener('contextmenu', e=>{ if(e.target.closest('[data-wk]')) e.preventDefault(); });
+$('#wkChips').addEventListener('contextmenu', e=>{ const b=e.target.closest('[data-wk]'); if(!b) return; e.preventDefault(); clearTimeout(wkT);
+  if(b.dataset.wk==='pick' && !S.wkMenu){ wkFired=false; wkLP=Date.now(); S.wkMenu=true; renderWeeks(); if(navigator.vibrate) try{navigator.vibrate(30);}catch(_){} } });
 function renWeekSheet(){
   const w=S.d.weeks[S.wk], m=w.match(/^(.*?)\s*•\s*(\d{1,2})\/(\d{1,2})\s*$/);
   const nm=m?m[1]:w, y=new Date().getFullYear(), dt=m?`${y}-${m[3].padStart(2,'0')}-${m[2].padStart(2,'0')}`:'';
@@ -1268,7 +1269,8 @@ function selToggleRow(it){ const n=it.dataset.name; const on=!S.sel.has(n); on?S
 $('#stuBody').addEventListener('pointerdown', e=>{ const el=e.target.closest('[data-lp]'); if(!el) return; clearTimeout(lpT); lpT=setTimeout(()=>{ lpT=null; openLP(el); }, 500); });
 ['pointerup','pointercancel','pointerleave'].forEach(ev=>$('#stuBody').addEventListener(ev, ()=>{ clearTimeout(lpT); }));
 $('#stuBody').addEventListener('pointermove', e=>{ if(lpT && (Math.abs(e.movementX)+Math.abs(e.movementY))>6){ clearTimeout(lpT); lpT=null; } });
-$('#stuBody').addEventListener('contextmenu', e=>{ const el=e.target.closest('[data-lp]'); if(!el) return; e.preventDefault(); if(lpT){ clearTimeout(lpT); lpT=null; openLP(el); } });
+$('#stuBody').addEventListener('contextmenu', e=>{ const el=e.target.closest('[data-lp]'); if(!el) return; e.preventDefault(); clearTimeout(lpT); lpT=null;
+  if(Date.now()-lpJust>800){ openLP(el); lpFired=false; lpJust=Date.now(); } });
 $('#stuBody').addEventListener('input', e=>{ const t=e.target; if(t.dataset.otx!=null && OCR.res) OCR.res.items[+t.dataset.otx].t=t.value; });
 $('#stuBody').addEventListener('click', async e=>{
   const t=e.target;
