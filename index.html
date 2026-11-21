@@ -72,6 +72,28 @@ main{padding:12px 16px;max-width:760px;margin:auto;padding-bottom:110px}
 .gbar{display:flex;gap:6px;margin-bottom:10px}
 .gbar .chip{flex:1;text-align:center;padding:9px 4px}
 .gi{font-size:13px;margin-inline-end:4px}
+.cab{position:fixed;top:0;left:0;right:0;z-index:45;display:flex;align-items:center;gap:4px;background:#1b2a12;border-bottom:1px solid #2f4a1c;padding:calc(8px + env(safe-area-inset-top)) 10px 8px;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+.cab .cnt{flex:1;font-size:18px;font-weight:800;color:var(--acc);padding:0 6px}
+.cab .ic{width:44px;height:44px;border-radius:12px;border:0;background:none;font-size:21px;display:grid;place-items:center;color:var(--txt)}
+.cab .ic:active{background:#2a3f1d}
+.snack{position:fixed;left:12px;right:12px;bottom:84px;z-index:35;display:flex;align-items:center;gap:8px;background:#e7f0e9;color:#0b120d;border-radius:12px;padding:8px 8px 8px 14px;box-shadow:0 6px 18px rgba(0,0,0,.45);max-width:740px;margin:auto}
+.snack b{flex:1;font-size:14px}
+.snack .btn{padding:8px 12px;font-size:14px}
+.snack .btn.ghost{background:none;border:0;color:#2f6b0a;font-weight:800}
+.sheet{position:fixed;top:0;right:0;bottom:0;left:0;z-index:55;background:rgba(0,0,0,.45);display:flex;align-items:flex-end}
+.sheetbox{width:100%;max-width:760px;margin:auto auto 0;background:#101a13;border-radius:22px 22px 0 0;border-top:1px solid #2f4a1c;padding:6px 6px calc(10px + env(safe-area-inset-bottom));max-height:78vh;overflow:auto;animation:sheetUp .18s ease-out}
+@keyframes sheetUp{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}
+.sheetbox .grab{width:42px;height:5px;border-radius:3px;background:#3b5240;margin:4px auto 6px}
+.sheethd{display:flex;align-items:center;gap:8px;padding:4px 8px 8px}
+.sheethd b{flex:1;font-size:16px}
+.sheethd .x{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:17px}
+.sitm{display:flex;align-items:center;gap:14px;width:100%;background:none;border:0;border-radius:12px;padding:14px 12px;font-size:16px;text-align:right;color:var(--txt)}
+.sitm:active{background:var(--card2)}
+.sitm .e{font-size:20px;width:26px;text-align:center}
+.sitm.red{color:var(--red)}
+.sdiv{height:1px;background:var(--line);margin:4px 10px}
+.sbtns{display:flex;gap:10px;padding:8px}
+.sbtns .btn{flex:1;padding:14px;font-size:16px}
 .selmini{position:sticky;bottom:84px;z-index:16;display:flex;gap:8px;align-items:center;background:#101a13;border:1px solid var(--acc);border-radius:14px;padding:8px 10px;margin-top:10px}
 .selmini b{flex:1}
 .selbar{background:#101a13;border:1px solid var(--acc);border-radius:14px;padding:8px;margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
@@ -248,6 +270,7 @@ th.nm{z-index:3;background:var(--card2)}
 </main>
 
 <div id="printArea"></div>
+<div class="sheet hide" id="sheet"><div class="sheetbox"><div class="grab"></div><div class="sheethd"><b id="sheetT"></b><button class="x" data-act="sheetx">✖</button></div><div id="sheetB"></div></div></div>
 <div class="pk hide" id="pk">
   <div class="pkbox">
     <div class="pkhead"><button class="ib" id="pkX" title="إلغاء" style="font-size:18px">✖</button><b id="pkT"></b><span style="width:40px"></span></div>
@@ -260,7 +283,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 28;
+const APP_V = 29;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;
@@ -799,8 +822,8 @@ function mvBox(){
   if(!others.length) return `<div class="mvbox">مفيش فصل تاني — اعمل فصل جديد الأول</div>`;
   return `<div class="mvbox"><b style="display:flex;justify-content:space-between;align-items:center">🔀 نقل ${S.mvFor.length===1?esc(S.mvFor[0]):S.mvFor.length+' طالب'} لـ:<button class="btn ghost sm" id="mvX" style="flex:none;min-width:0;padding:4px 10px">✖</button></b><div class="row" style="margin-top:8px">${others.map(c=>`<button class="btn ghost" data-mvto-c="${esc(c)}">فصل ${esc(dispName(c))}</button>`).join('')}</div><div class="mut" style="margin-top:6px">بيتنقل بدرجاته، والاسم الموجود في الفصل التاني مش بيتكرر</div></div>`;
 }
-async function doMove(to, names, btn){
-  if(!btn.dataset.ok){ btn.dataset.ok=1; btn.textContent='اضغط تاني للتأكيد ✔'; setTimeout(()=>{ if(btn.isConnected){ delete btn.dataset.ok; btn.textContent='فصل '+dispName(to); } },3000); return; }
+async function doMove(to, names, btn, confirmed){
+  if(!confirmed && !btn.dataset.ok){ btn.dataset.ok=1; btn.textContent='اضغط تاني للتأكيد ✔'; setTimeout(()=>{ if(btn.isConnected){ delete btn.dataset.ok; btn.textContent='فصل '+dispName(to); } },3000); return; }
   btn.disabled=true; btn.textContent='⏳ بينقل…';
   try{
     await flush(); if(S.q.some(x=>x.cls===S.cls||x.cls===to)) throw new Error('فيه درجات لسه ماتحفظتش — استنى النت وجرب تاني');
@@ -809,7 +832,7 @@ async function doMove(to, names, btn){
     S.mvFor=null; S.sel=new Set(); S.selMode=false; ORD.sel=-1; S.open=-1; S.topen=-1;
     await loadClass();
     toast(`✅ اتنقل ${j.moved.length} لفصل ${plainName(to)}` + (j.skipped.length?` • ${j.skipped.length} موجود هناك فعلاً`:''));
-  }catch(er){ toast(er.message,true); btn.disabled=false; btn.textContent='فصل '+dispName(to); delete btn.dataset.ok; }
+  }catch(er){ toast(er.message,true); if(btn.isConnected){ btn.disabled=false; btn.textContent='فصل '+dispName(to); delete btn.dataset.ok; } }
 }
 async function doGender(names, g){
   try{ await api('setGender',{cls:S.cls,names,g}); names.forEach(n=>{ S.d.gender=S.d.gender||{}; S.d.gender[n]=g; }); cacheD(); renderStu(); toast(g==='b'?'👦 اتسجلوا أولاد':'👧 اتسجلوا بنات'); }
@@ -819,6 +842,83 @@ function ordStart(){ if(ORD.cls!==S.cls || !ORD.names){ ORD.cls=S.cls; ORD.names
 const arCmp=(a,b)=>AR_NORM(a).localeCompare(AR_NORM(b),'ar');
 function ordMove(from,to){ ordStart(); to=Math.max(0,Math.min(ORD.names.length-1,to)); const [x]=ORD.names.splice(from,1); ORD.names.splice(to,0,x); renderStu();
   setTimeout(()=>{ const el=document.querySelector(`#stuBody .sitem[data-i="${to}"]`); if(el) el.scrollIntoView({block:'center',behavior:'smooth'}); },30); }
+/* ---------- قايمة من تحت (Bottom sheet) + شريط التحديد فوق ---------- */
+function openSheet(title, html){ $('#sheetT').textContent=title; $('#sheetB').innerHTML=html; $('#sheet').classList.remove('hide'); }
+function closeSheet(){ $('#sheet').classList.add('hide'); }
+$('#sheet').addEventListener('click', e=>{ if(e.target.id==='sheet') closeSheet(); });
+const sitem=(act,e,label,cls)=>`<button class="sitm ${cls||''}" data-act="${esc(act)}"><span class="e">${e}</span>${label}</button>`;
+function moreSheet(){
+  const one=S.sel.size===1, n=S.sel.size;
+  openSheet(`${n} محدد`,
+    sitem('none','⬜','مسح التحديد') + sitem('late','🕓','متأخر / شيل العلامة') + sitem('grade','✍️','درجة واحدة للمحددين') +
+    '<div class="sdiv"></div>' + sitem('az','🔤','ترتيب المحددين أبجدي') + sitem('top','⏫','نقلهم لأول القايمة') + sitem('end','⏬','نقلهم لآخر القايمة') +
+    (one ? sitem('up','⬆️','لفوق خطوة') + sitem('down','⬇️','لتحت خطوة') + sitem('ren','✏️','تعديل الاسم') : '') +
+    '<div class="sdiv"></div>' + sitem('del','🗑️','حذف المحددين','red'));
+}
+function confirmSheet(title, msg, okLabel, okAct, red){
+  openSheet(title, `<div style="padding:4px 14px 6px;color:var(--mut);line-height:1.7">${msg}</div><div class="sbtns"><button class="btn ghost" data-act="sheetx">إلغاء</button><button class="btn ${red?'red':''}" data-act="${esc(okAct)}">${okLabel}</button></div>`);
+}
+async function selAction(act, el){
+  const pend = ORD.cls===S.cls && ORD.names;
+  const need = ()=>{ if(!S.sel.size){ toast('حدّد طلاب الأول',true); return false; } return true; };
+  const noPend = ()=>{ if(pend){ toast('احفظ الترتيب الأول أو الغيه',true); return false; } return true; };
+  switch(act){
+    case 'sheetx': closeSheet(); return;
+    case 'exit': S.selMode=false; S.sel=new Set(); S.mvFor=null; closeSheet(); renderStu(); return;
+    case 'all': { const vis=S.d.names.filter(n=>S.gf==='all'||gOf(n)===S.gf); const allOn=vis.every(n=>S.sel.has(n)); vis.forEach(n=> allOn?S.sel.delete(n):S.sel.add(n)); renderStu(); return; }
+    case 'none': S.sel=new Set(); closeSheet(); renderStu(); return;
+    case 'more': if(need()) moreSheet(); return;
+    case 'g_b': case 'g_g': if(need()&&noPend()) await doGender([...S.sel], act==='g_b'?'b':'g'); return;
+    case 'late': {
+      if(!need()||!noPend()) return; closeSheet();
+      const late=new Set(S.d.late||[]), names=[...S.sel], allLate=names.every(n=>late.has(n));
+      names.forEach(n=> allLate?late.delete(n):late.add(n));
+      try{ await flush(); if(S.q.some(x=>x.cls===S.cls)) throw new Error('فيه درجات لسه ماتحفظتش — استنى النت');
+        await api('reorder',{cls:S.cls, order:S.d.names, late:[...late]}); await loadClass(); toast(allLate?'🕓 اتشالت علامة متأخر':'🕓 اتعلّموا متأخرين'); }
+      catch(er){ toast(er.message,true); }
+      return;
+    }
+    case 'grade': {
+      if(!need()) return; closeSheet();
+      if(!S.d.weeks.length) return toast('ضيف أسبوع الأول من «الرصد»',true);
+      const F=[9,8,0,2,4,1,3,5];
+      genPicker('الخانة — '+S.d.weeks[S.wk], F, F.map(x=>LABEL[x]), 9, f=>{ S._bf=f; });
+      S._bf=9; S._bstep='field'; return;
+    }
+    case 'az': case 'top': case 'end': case 'up': case 'down': closeSheet(); ordSel(act); return;
+    case 'ren': {
+      if(!noPend()) return; const n=[...S.sel][0];
+      openSheet('✏️ تعديل الاسم', `<div style="padding:4px 10px"><input type="text" id="renIn" value="${esc(n)}"></div><div class="sbtns"><button class="btn ghost" data-act="sheetx">إلغاء</button><button class="btn" data-act="renGo">حفظ</button></div>`);
+      setTimeout(()=>{ const i=$('#renIn'); if(i){ i.focus(); } },50); return;
+    }
+    case 'renGo': {
+      const old=[...S.sel][0], nn=$('#renIn').value.trim(); if(!nn) return;
+      el.disabled=true;
+      try{ await api('renameStudent',{cls:S.cls,row:S.d.names.indexOf(old),old,name:nn}); closeSheet(); S.sel=new Set([nn]); await loadClass(); toast('✅ اتعدّل الاسم'); }
+      catch(er){ toast(er.message,true); el.disabled=false; }
+      return;
+    }
+    case 'move': {
+      if(!need()||!noPend()) return;
+      const others=S.classes.filter(c=>c!==S.cls);
+      if(!others.length) return toast('مفيش فصل تاني — اعمل فصل جديد الأول',true);
+      openSheet(`🔀 نقل ${S.sel.size} طالب لـ`, others.map(c=>sitem('mvc:'+c,'📘','فصل '+dispName(c))).join('') + `<div class="mut" style="padding:6px 14px">بيتنقلوا بدرجاتهم، واللي اسمه موجود في الفصل التاني مش بيتكرر</div>`);
+      return;
+    }
+    case 'del': if(!need()||!noPend()) return; confirmSheet('🗑️ حذف', `هيتمسح <b>${S.sel.size}</b> طالب بكل درجاتهم من الشيت. مينفعش ترجع في ده.`, 'حذف', 'delGo', true); return;
+    case 'delGo': {
+      el.disabled=true; el.textContent='⏳ بيمسح…';
+      try{ await flush(); let k=0; for(const n of [...S.sel]){ const i=S.d.names.indexOf(n); if(i<0) continue; await api('deleteStudent',{cls:S.cls,row:i,name:n}); S.d.names.splice(i,1); k++; }
+        closeSheet(); S.sel=new Set(); S.selMode=false; S.open=-1; await loadClass(); toast(`🗑️ اتمسح ${k} طالب`); }
+      catch(er){ closeSheet(); toast(er.message,true); await loadClass(); }
+      return;
+    }
+  }
+  if(act.startsWith('mvc:')){ const to=act.slice(4); confirmSheet('🔀 نقل', `نقل <b>${S.sel.size}</b> طالب لفصل <b>${dispName(to)}</b> بدرجاتهم؟`, 'نقل', 'mvgo:'+to); return; }
+  if(act.startsWith('mvgo:')){ const to=act.slice(5); el.disabled=true; el.textContent='⏳ بينقل…'; await doMove(to,[...S.sel],el,true); closeSheet(); return; }
+}
+document.addEventListener('click', e=>{ const b=e.target.closest('[data-act]'); if(!b) return; e.stopPropagation(); selAction(b.dataset.act, b); }, true);
+
 function ordSel(kind){
   ordStart(); const sel=ORD.names.filter(n=>S.sel.has(n)); if(!sel.length) return toast('حدّد طلاب الأول',true);
   if(kind==='az'){ const pos=ORD.names.map((n,i)=>S.sel.has(n)?i:-1).filter(i=>i>=0); const sorted=sel.slice().sort(arCmp); pos.forEach((p,k)=>ORD.names[p]=sorted[k]); }
@@ -840,19 +940,15 @@ function renderStu(){
     ${S.selMode?'':`<div class="row" style="margin-bottom:6px"><button class="btn ghost sm" id="sortA">🔤 أبجدي (المتأخرين في الآخر)</button><button class="btn ghost sm" id="sortAll">🔤 أبجدي للكل</button></div>
     <div class="mut" style="margin-bottom:6px">👆 اضغط مطول على أي اسم عشان تبدأ التحديد</div>`}`
     + names.map((n,i)=>(S.gf!=='all' && gOf(n)!==S.gf) ? '' : `<div class="sitem ${S.sel.has(n)?'sel':''}" data-i="${i}" data-name="${esc(n)}"><div class="sline">${S.selMode?`<input type="checkbox" class="selchk" data-sel="${esc(n)}" ${S.sel.has(n)?'checked':''}>`:''}<span class="mut">${i+1}</span><span class="nm" data-lp="${i}">${gIcon(n)}${esc(n)}${late.has(n)?'<span class="late">🕓 متأخر</span>':''}</span></div></div>`).join('')
-    + (P && !S.selMode ? `<div class="ordbar"><button class="btn" id="ordSave">💾 حفظ الترتيب</button><button class="btn ghost" id="ordCancel">إلغاء</button></div>`:'')
-    + (S.selMode ? `<div class="selmini"><b>☑️ محدد ${S.sel.size}</b><button class="btn sm" id="selJump">⚙️ الإجراءات ⬇</button><button class="btn ghost sm" id="selExit2">✖</button></div><div class="selbar" id="selbar">
-        <b style="width:100%;font-size:14px;display:flex;justify-content:space-between">☑️ محدد ${S.sel.size}<button class="btn ghost sm" id="selExit" style="flex:none;min-width:0;padding:4px 10px">✖ خروج</button></b>
-        ${P?`<button class="btn" id="ordSave">💾 حفظ الترتيب</button><button class="btn ghost" id="ordCancel">↩️ إلغاء الترتيب</button>`:''}
-        <button class="btn ghost" id="selAll">☑️ كل المعروضين</button><button class="btn ghost" id="selNone">⬜ مسح التحديد</button>
-        <div class="mut" style="width:100%">🏷️ تصنيف</div>
-        <button class="btn ghost" data-gs="b">👦 ولد</button><button class="btn ghost" data-gs="g">👧 بنت</button><button class="btn ghost" id="selLate">🕓 متأخر / لأ</button>
-        <div class="mut" style="width:100%">🔤 ترتيب</div>
-        <button class="btn ghost" data-ss="az">🔤 أبجدي للمحددين</button><button class="btn ghost" data-ss="top">⏫ لأول القايمة</button><button class="btn ghost" data-ss="end">⏬ لآخر القايمة</button>
-        ${one?`<button class="btn ghost" data-ss="up">⬆️ لفوق</button><button class="btn ghost" data-ss="down">⬇️ لتحت</button>${P?'':`<button class="btn ghost" data-ren="${d.names.indexOf(one)}">✏️ تعديل الاسم</button>`}`:''}
-        <div class="mut" style="width:100%">⚙️ إجراءات</div>
-        <button class="btn ghost" id="selGrade">✍️ درجة للكل</button><button class="btn" id="selMove">🔀 نقل لفصل</button><button class="btn red" id="selDel">🗑️ حذف</button>
-        ${S.mvFor ? '<div style="width:100%">'+mvBox()+'</div>' : ''}</div>` : '')
+    + (P ? `<div class="snack"><b>↕️ الترتيب اتغير</b><button class="btn ghost" id="ordCancel">إلغاء</button><button class="btn" id="ordSave">حفظ</button></div>`:'')
+    + (S.selMode ? `<div class="cab">
+        <button class="ic" data-act="exit" title="خروج">✖</button>
+        <span class="cnt">${S.sel.size}</span>
+        <button class="ic" data-act="all" title="تحديد الكل">☑️</button>
+        <button class="ic" data-act="g_b" title="ولد">👦</button>
+        <button class="ic" data-act="g_g" title="بنت">👧</button>
+        <button class="ic" data-act="move" title="نقل لفصل">🔀</button>
+        <button class="ic" data-act="more" title="المزيد">⋮</button></div>` : '')
     + `</div>`;
   if(d.weeks.length) h += `<details class="acc"><summary>📅 الأسابيع (${d.weeks.length})</summary><div class="accb">` + d.weeks.map((w,k)=>`<div class="sline"><span class="nm">${esc(w)}</span><button class="btn red sm" data-delwk="${k}">🗑️</button></div>`).join('') + `</div></details>`;
   $('#stuBody').innerHTML = h;
@@ -931,7 +1027,7 @@ $('#pkNext').onclick = ()=>{
 };
 
 /* ---------- أحداث ---------- */
-$('#tiles').onclick = e=>{ const t=e.target.closest('.tile'); if(!t) return; S.view=t.dataset.v; render(); scrollTo(0,0); };
+$('#tiles').onclick = e=>{ const t=e.target.closest('.tile'); if(!t) return; if(t.dataset.v!=='stu'){ S.selMode=false; S.sel=new Set(); } S.view=t.dataset.v; render(); scrollTo(0,0); };
 $('#clsChips').onclick = e=>{
   const c=e.target.closest('.chip'); if(!c) return;
   if(c.dataset.c==='+'){ openAddCls(); return; }
@@ -1202,6 +1298,9 @@ if('serviceWorker' in navigator){
 // زرار الرجوع في الموبايل
 window.appBack = function(){
   if(!$('#pk').classList.contains('hide')){ cancelPicker(); return true; }
+  if(!$('#sheet').classList.contains('hide')){ closeSheet(); return true; }
+  if(S.selMode){ selAction('exit'); return true; }
+  if(ORD.cls===S.cls && ORD.names){ ORD.names=null; renderStu(); return true; }
   if(ORD.sel>=0){ ORD.sel=-1; renderStu(); return true; }
   if(!$('#addClsCard').classList.contains('hide')){ $('#addClsCard').classList.add('hide'); return true; }
   if(!$('#setCard').classList.contains('hide')){ $('#setCard').classList.add('hide'); return true; }
