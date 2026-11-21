@@ -218,6 +218,7 @@ th.nm{z-index:3;background:var(--card2)}
   <div class="top">
     <button class="ib hide" id="bHome" title="الرئيسية">🏠</button>
     <h1 id="hTitle">📘 سجل الدرجات</h1>
+    <button class="ib" id="bZoom" title="حجم الخط" style="font-size:15px;font-weight:800">أ<small style="font-size:10px">أ</small></button>
     <button class="ib" id="bUpd" title="تحديث">⟳<span class="badge hide" id="updBadge">1</span></button>
     <button class="ib" id="bSet" title="الإعدادات">⚙️</button>
   </div>
@@ -306,7 +307,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 39;
+const APP_V = 40;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;
@@ -355,6 +356,11 @@ if(!S.api || /AKfycbwuEK8g|GMryLww/.test(S.api)){ S.api = DEFAULT_API; LS.set('a
 function applyZoom(){ const z=+LS.get('zoom', 0.92); document.body.style.zoom=z; document.querySelectorAll('#zoomChips .chip').forEach(c=>c.classList.toggle('on', +c.dataset.z===z)); }
 document.getElementById('zoomChips').addEventListener('click', e=>{ const c=e.target.closest('[data-z]'); if(!c) return; LS.set('zoom', +c.dataset.z); applyZoom(); });
 applyZoom();
+// زرار سريع فوق: كل دوسة بتغيّر حجم الخط
+document.getElementById('bZoom').addEventListener('click', ()=>{
+  const Z=[0.85,0.92,1,1.1], N=['صغير','متوسط','عادي','كبير'], cur=+LS.get('zoom',0.92);
+  const i=(Z.indexOf(cur)+1)%Z.length; LS.set('zoom',Z[i]); applyZoom(); toast('🔠 حجم الخط: '+N[i]);
+});
 /* ---------- أدوات ---------- */
 function toast(msg, err){ const t=document.createElement('div'); t.className='toast'+(err?' err':''); t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(), err?4200:2200); }
 async function api(action, p={}){
