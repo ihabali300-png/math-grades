@@ -162,6 +162,11 @@ function styleCum(sh, k) {
 function getLate(cls) { try { return JSON.parse(PropertiesService.getDocumentProperties().getProperty('late_' + tabName(cls)) || '[]'); } catch (e) { return []; } }
 function setLate(cls, arr) { PropertiesService.getDocumentProperties().setProperty('late_' + tabName(cls), JSON.stringify(arr)); }
 
+// نوع الطالب (ولد b / بنت g) — بيتحفظ بالاسم لكل فصل
+function getGender(cls) { try { return JSON.parse(PropertiesService.getDocumentProperties().getProperty('gender_' + tabName(cls)) || '{}'); } catch (e) { return {}; } }
+function setGender(cls, obj) { PropertiesService.getDocumentProperties().setProperty('gender_' + tabName(cls), JSON.stringify(obj)); }
+function normName(t) { return String(t).replace(/[\u064B-\u0652\u0640]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/\s+/g, ' ').trim(); }
+
 function renumber(sh) {
   const n = nStudents(sh);
   if (n) sh.getRange(HDR + 1, 1, n, 1).setValues(Array.from({ length: n }, (_, i) => [i + 1]));
@@ -209,6 +214,9 @@ const ACTIONS = {
     sh.setName(name);
     PropertiesService.getDocumentProperties().deleteProperty('late_' + tabName(b.cls));
     setLate(name, late);
+    const gd = getGender(b.cls);
+    PropertiesService.getDocumentProperties().deleteProperty('gender_' + tabName(b.cls));
+    setGender(name, gd);
     sh.getRange(1, 1).setValue('📘 فصل ' + name);
     return { cls: name };
   },
@@ -232,7 +240,8 @@ const ACTIONS = {
     const term = n ? sh.getRange(HDR + 1, termCol(sh), n, T).getValues()
       .map(r => r.map(v => (v === '' || v === null) ? '' : (typeof v === 'number' ? Math.round(v * 100) / 100 : v))) : [];
     const late = getLate(b.cls).filter(x => names.indexOf(x) >= 0);
-    return { names, weeks, vals, term, late, url: ss.getUrl() + '#gid=' + sh.getSheetId() };
+    const gender = getGender(b.cls);
+    return { names, weeks, vals, term, late, gender, url: ss.getUrl() + '#gid=' + sh.getSheetId() };
   },
 
   addWeek: (ss, b) => {
@@ -313,6 +322,8 @@ const ACTIONS = {
     sh.getRange(r, 2).setValue(String(b.name).trim());
     const late = getLate(b.cls), i = late.indexOf(String(b.old));
     if (i >= 0) { late[i] = String(b.name).trim(); setLate(b.cls, late); }
+    const g = getGender(b.cls);
+    if (g[String(b.old)]) { g[String(b.name).trim()] = g[String(b.old)]; delete g[String(b.old)]; setGender(b.cls, g); }
     return {};
   },
 
@@ -343,12 +354,71 @@ const ACTIONS = {
     return {};
   },
 
+  setGender: (ss, b) => {
+    getSh(ss, b.cls);
+    const g = getGender(b.cls);
+    (b.names || []).forEach(n => { if (b.g === 'b' || b.g === 'g') g[String(n)] = b.g; else delete g[String(n)]; });
+    setGender(b.cls, g);
+    return {};
+  },
+
+  // نقل طلاب من فصل لفصل بدرجاتهم (الأسبوع رقم كذا بيروح للأسبوع بنفس الرقم)
+  moveStudents: (ss, b) => {
+    const src = getSh(ss, b.from), dst = getSh(ss, b.to);
+    if (src.getSheetId() === dst.getSheetId()) throw new Error('اختار فصل تاني');
+    const ns = nStudents(src), nd = nStudents(dst), kS = nWeeks(src), kD = nWeeks(dst);
+    const srcNames = ns ? src.getRange(HDR + 1, 2, ns, 1).getDisplayValues().map(r => r[0]) : [];
+    const dstNorm = (nd ? dst.getRange(HDR + 1, 2, nd, 1).getDisplayValues().map(r => r[0]) : []).map(normName);
+    const plan = [], skipped = [];
+    (b.names || []).map(String).forEach(name => {
+      const i = srcNames.indexOf(name);
+      if (i < 0) return;
+      if (dstNorm.indexOf(normName(name)) >= 0 || plan.some(p => normName(p.name) === normName(name))) { skipped.push(name); return; }
+      const r = HDR + 1 + i, weeks = [];
+      for (let k = 0; k < kS; k++) {
+        const v = src.getRange(r, startCol(k), 1, W).getValues()[0];
+        const inp = v.slice(0, 6).concat([v[8], v[9]]);
+        if (k >= kD) { if (inp.some(x => x !== '' && x !== null)) throw new Error('الفصل اللي هتنقل له فيه أسابيع أقل — ضيف الأسابيع الناقصة فيه الأول'); }
+        else weeks.push(inp);
+      }
+      const term = src.getRange(r, termCol(src), 1, 2).getValues()[0];
+      plan.push({ name, row: r, weeks, term });
+    });
+    if (!plan.length) return { moved: [], skipped };
+    const start = HDR + 1 + nd;
+    dst.getRange(start, 1, plan.length, 2).setValues(plan.map((p, j) => [nd + j + 1, p.name]));
+    plan.forEach((p, j) => {
+      const r = start + j;
+      p.weeks.forEach((inp, k) => {
+        const s0 = startCol(k);
+        dst.getRange(r, s0, 1, 6).setValues([inp.slice(0, 6)]);
+        dst.getRange(r, s0 + 8, 1, 2).setValues([[inp[6], inp[7]]]);
+      });
+      dst.getRange(r, termCol(dst), 1, 2).setValues([p.term]);
+    });
+    for (let k = 0; k < kD; k++) {
+      setFormulas(dst, start, plan.length, k);
+      dst.getRange(start, startCol(k), plan.length, W).setHorizontalAlignment('center');
+      dst.getRange(start, startCol(k) + 10, plan.length, 1).setFontWeight('bold');
+    }
+    rewriteCum(dst);
+    plan.map(p => p.row).sort((a, c) => c - a).forEach(r => src.deleteRow(r));
+    renumber(src);
+    const gS = getGender(b.from), gD = getGender(b.to), moved = plan.map(p => p.name);
+    moved.forEach(n => { if (gS[n]) { gD[n] = gS[n]; delete gS[n]; } });
+    setGender(b.from, gS); setGender(b.to, gD);
+    setLate(b.from, getLate(b.from).filter(x => moved.indexOf(x) < 0));
+    setLate(b.to, getLate(b.to).concat(moved));
+    return { moved, skipped };
+  },
+
   deleteStudent: (ss, b) => {
     const sh = getSh(ss, b.cls);
     const r = findRow(sh, Number(b.row), String(b.name));
     sh.deleteRow(r);
     renumber(sh);
     setLate(b.cls, getLate(b.cls).filter(x => x !== String(b.name)));
+    const g = getGender(b.cls); delete g[String(b.name)]; setGender(b.cls, g);
     return {};
   }
 };
