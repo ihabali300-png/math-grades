@@ -155,6 +155,10 @@ function styleCum(sh, k) {
   if (n) sh.getRange(HDR + 1, c, n, 1).setHorizontalAlignment('center').setFontWeight('bold').setFontColor('#bf360c');
 }
 
+// الطلاب المضافين متأخر (بيتحفظوا بالاسم لكل فصل)
+function getLate(cls) { try { return JSON.parse(PropertiesService.getDocumentProperties().getProperty('late_' + tabName(cls)) || '[]'); } catch (e) { return []; } }
+function setLate(cls, arr) { PropertiesService.getDocumentProperties().setProperty('late_' + tabName(cls), JSON.stringify(arr)); }
+
 function renumber(sh) {
   const n = nStudents(sh);
   if (n) sh.getRange(HDR + 1, 1, n, 1).setValues(Array.from({ length: n }, (_, i) => [i + 1]));
@@ -198,7 +202,10 @@ const ACTIONS = {
     const name = tabName(b.name);
     if (!name) throw new Error('اكتب اسم الفصل');
     if (name !== sh.getName() && ss.getSheetByName(name)) throw new Error('فيه فصل بنفس الاسم');
+    const late = getLate(b.cls);
     sh.setName(name);
+    PropertiesService.getDocumentProperties().deleteProperty('late_' + tabName(b.cls));
+    setLate(name, late);
     sh.getRange(1, 1).setValue('📘 فصل ' + name);
     return { cls: name };
   },
@@ -221,7 +228,8 @@ const ACTIONS = {
       .map(r => r.map(v => (v === '' || v === null) ? '' : (typeof v === 'number' ? Math.round(v * 100) / 100 : v))) : names.map(() => []);
     const term = n ? sh.getRange(HDR + 1, termCol(sh), n, T).getValues()
       .map(r => r.map(v => (v === '' || v === null) ? '' : (typeof v === 'number' ? Math.round(v * 100) / 100 : v))) : [];
-    return { names, weeks, vals, term, url: ss.getUrl() + '#gid=' + sh.getSheetId() };
+    const late = getLate(b.cls).filter(x => names.indexOf(x) >= 0);
+    return { names, weeks, vals, term, late, url: ss.getUrl() + '#gid=' + sh.getSheetId() };
   },
 
   addWeek: (ss, b) => {
@@ -292,6 +300,7 @@ const ACTIONS = {
       sh.getRange(row, startCol(i) + 10, names.length, 1).setFontWeight('bold');
     }
     rewriteCum(sh);
+    if (b.late !== false && n > 0) setLate(b.cls, getLate(b.cls).concat(names));
     return {};
   },
 
@@ -299,6 +308,35 @@ const ACTIONS = {
     const sh = getSh(ss, b.cls);
     const r = findRow(sh, Number(b.row), String(b.old));
     sh.getRange(r, 2).setValue(String(b.name).trim());
+    const late = getLate(b.cls), i = late.indexOf(String(b.old));
+    if (i >= 0) { late[i] = String(b.name).trim(); setLate(b.cls, late); }
+    return {};
+  },
+
+  // ترتيب الطلاب: بننقل الصفوف كلها بدرجاتها، وبعدين نرجّع المعادلات
+  reorder: (ss, b) => {
+    const sh = getSh(ss, b.cls);
+    const n = nStudents(sh);
+    if (!n) return {};
+    const lastCol = sh.getLastColumn();
+    const rng = sh.getRange(HDR + 1, 1, n, lastCol);
+    const v = rng.getValues();
+    const names = v.map(r => String(r[1]));
+    const order = (b.order || []).map(String);
+    if (order.length !== n) throw new Error('الترتيب مش مطابق — حدّث الصفحة');
+    const used = new Array(n).fill(false);
+    const rows = order.map(nm => {
+      const i = names.findIndex((x, j) => !used[j] && x === nm);
+      if (i < 0) throw new Error('الترتيب مش مطابق — حدّث الصفحة');
+      used[i] = true;
+      return v[i].slice();
+    });
+    rows.forEach((r, k) => { r[0] = k + 1; });
+    rng.setValues(rows);
+    const k = nWeeks(sh);
+    for (let i = 0; i < k; i++) setFormulas(sh, HDR + 1, n, i);
+    rewriteCum(sh);
+    if (Array.isArray(b.late)) setLate(b.cls, b.late.map(String));
     return {};
   },
 
@@ -307,6 +345,7 @@ const ACTIONS = {
     const r = findRow(sh, Number(b.row), String(b.name));
     sh.deleteRow(r);
     renumber(sh);
+    setLate(b.cls, getLate(b.cls).filter(x => x !== String(b.name)));
     return {};
   }
 };

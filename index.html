@@ -48,6 +48,15 @@ main{padding:12px;max-width:760px;margin:auto;padding-bottom:90px}
 .orow input[type=checkbox]{width:20px;height:20px;accent-color:#a3e635;flex:none}
 .obadge{font-size:11px;padding:2px 6px;border-radius:6px;background:var(--card2);white-space:nowrap}
 .obadge.good{color:var(--acc)} .obadge.warn{color:var(--yel)} .obadge.dup{color:var(--red)}
+.sitem{border-bottom:1px solid var(--line)}
+.sitem:last-child{border-bottom:0}
+.sitem .sline{border-bottom:0;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.sitem.sel{background:#1b2a12;border-radius:10px}
+.smenu{display:flex;flex-wrap:wrap;gap:6px;padding:0 4px 10px}
+.smenu .btn{padding:7px 10px;font-size:13px}
+.late{font-size:11px;color:var(--yel);background:#2a2610;border-radius:6px;padding:1px 6px;margin-inline-start:6px;white-space:nowrap}
+.ordbar{position:sticky;bottom:10px;z-index:15;display:flex;gap:8px;background:#101a13;border:1px solid var(--acc);border-radius:14px;padding:8px;margin-top:10px}
+.ordbar .btn{flex:1}
 .pv{background:#fff;border-radius:10px;overflow:auto;padding:6px;max-height:60vh}
 .pv .pp{zoom:.42;margin-bottom:20px}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:9px 1px;text-align:center;font-size:12px;line-height:1.3}
@@ -57,7 +66,7 @@ main{padding:12px;max-width:760px;margin:auto;padding-bottom:90px}
 .card h3{margin:0 0 8px;font-size:16px}
 .mut{color:var(--mut);font-size:13px}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-input[type=text],input[type=url],input[type=date],input[type=search],textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;outline:none}
+input[type=text],input[type=url],input[type=date],input[type=search],input[type=number],textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;outline:none}
 input:focus,textarea:focus{border-color:var(--acc)}
 textarea{min-height:120px;resize:vertical;line-height:1.7}
 .btn{background:var(--acc);color:#0b120d;border:0;border-radius:12px;padding:10px 16px;font-weight:700}
@@ -223,7 +232,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 15;
+const APP_V = 16;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;                       // أعمدة الأسبوع في الشيت
@@ -368,7 +377,7 @@ function renderHome(){
     + `<button class="ccard add" id="homeAdd"><span style="font-size:34px">＋</span>فصل جديد</button>`;
 }
 function goHome(){ S.screen='home'; S.open=-1; S.topen=-1; $('#clsScreen').classList.add('hide'); $('#home').classList.remove('hide'); $('#clsChips').classList.add('hide'); $('#bHome').classList.add('hide'); $('#hTitle').textContent='📘 سجل الدرجات'; renderHome(); scrollTo(0,0); }
-function openClass(c){ S.cls=c; LS.set('cls',c); S.screen='class'; S.open=-1; S.topen=-1; S.search=''; $('#home').classList.add('hide'); $('#clsScreen').classList.remove('hide'); $('#clsChips').classList.remove('hide'); $('#bHome').classList.remove('hide'); $('#hTitle').textContent='📘 فصل '+dispName(c); renderCls(); render(); loadClass(); scrollTo(0,0); }
+function openClass(c){ ORD.names=null; ORD.sel=-1; S.cls=c; LS.set('cls',c); S.screen='class'; S.open=-1; S.topen=-1; S.search=''; $('#home').classList.add('hide'); $('#clsScreen').classList.remove('hide'); $('#clsChips').classList.remove('hide'); $('#bHome').classList.remove('hide'); $('#hTitle').textContent='📘 فصل '+dispName(c); renderCls(); render(); loadClass(); scrollTo(0,0); }
 async function loadClass(){
   const cached = LS.get('d3_'+S.cls, null);
   if(cached){ S.d=cached; S.wk=Math.min(LS.get('wk_'+S.cls, cached.weeks.length-1), cached.weeks.length-1); if(S.wk<0)S.wk=0; render(); }
@@ -376,7 +385,7 @@ async function loadClass(){
   try{
     const j = await api('getClass', {cls:S.cls});
     // ضيف تعديلات الطابور اللي لسه ماتبعتتش
-    S.d = {names:j.names, weeks:j.weeks, vals:j.vals.map(r=>r.slice()), term:(j.term||[]).map(r=>r.slice()), url:j.url};
+    S.d = {names:j.names, weeks:j.weeks, vals:j.vals.map(r=>r.slice()), term:(j.term||[]).map(r=>r.slice()), late:j.late||[], url:j.url};
     S.q.filter(x=>x.cls===S.cls && x.kind==='term').forEach(x=>{ const i=S.d.names.indexOf(x.name); if(i<0) return; const t=trm(i); t[0]=x.vals[0]; t[1]=x.vals[1]; });
     S.d.names.forEach((_,i)=>termCalc(i));
     S.q.filter(x=>x.cls===S.cls && x.kind!=='term').forEach(x=>{ const i=S.d.names.indexOf(x.name); if(i<0) return; const b=blk(i,x.week); ORDER.slice().sort((a,c)=>a-c).forEach((idx,n)=>b[idx]=x.vals[n]); setBlk(i,x.week,calc(b)); });
@@ -708,11 +717,30 @@ function ocrMatch(texts){
   }).sort((a,b)=>a.pos-b.pos);
   return {used, items};
 }
+const ORD={cls:null, names:null, late:null, sel:-1};
+function ordStart(){ if(ORD.cls!==S.cls || !ORD.names){ ORD.cls=S.cls; ORD.names=S.d.names.slice(); ORD.late=(S.d.late||[]).slice(); } }
+const arCmp=(a,b)=>AR_NORM(a).localeCompare(AR_NORM(b),'ar');
+function ordMove(from,to){ ordStart(); to=Math.max(0,Math.min(ORD.names.length-1,to)); const [x]=ORD.names.splice(from,1); ORD.names.splice(to,0,x); ORD.sel=to; renderStu();
+  setTimeout(()=>{ const el=document.querySelector(`#stuBody .sitem[data-i="${to}"]`); if(el) el.scrollIntoView({block:'center',behavior:'smooth'}); },30); }
 function renderStu(){
   const d=S.d;
   let h = ocrCard();
   h += `<div class="card"><h3>➕ إضافة طلاب لفصل ${esc(dispName(S.cls))}</h3><textarea id="addNames" placeholder="كل اسم في سطر"></textarea><button class="btn" id="addNamesGo" style="margin-top:8px">إضافة</button></div>`;
-  h += `<div class="card"><h3>👥 الطلاب (${d.names.length})</h3>` + d.names.map((n,i)=>`<div class="sline" data-i="${i}"><span class="mut">${i+1}</span><span class="nm">${esc(n)}</span><button class="btn ghost sm" data-ren="${i}">✏️</button><button class="btn red sm" data-del="${i}">🗑️</button></div>`).join('') + `</div>`;
+  const P=ORD.cls===S.cls && ORD.names ? ORD : null;
+  const names=P?P.names:d.names, late=new Set(P?P.late:(d.late||[]));
+  h += `<div class="card"><h3>👥 الطلاب (${names.length})</h3>
+    <div class="row" style="margin-bottom:6px"><button class="btn ghost sm" id="sortA">🔤 أبجدي (المتأخرين في الآخر)</button><button class="btn ghost sm" id="sortAll">🔤 أبجدي للكل</button></div>
+    <div class="mut" style="margin-bottom:6px">👆 اضغط مطول على أي اسم: تعديل، تحريك، أو حذف</div>`
+    + names.map((n,i)=>`<div class="sitem ${ORD.sel===i?'sel':''}" data-i="${i}"><div class="sline"><span class="mut">${i+1}</span><span class="nm" data-lp="${i}">${esc(n)}${late.has(n)?'<span class="late">🕓 متأخر</span>':''}</span></div>${ORD.sel===i?`<div class="smenu">
+        ${P?'':`<button class="btn ghost" data-ren="${i}">✏️ تعديل</button>`}
+        <button class="btn ghost" data-mv="-1">⬆️ لفوق</button><button class="btn ghost" data-mv="1">⬇️ لتحت</button>
+        <button class="btn ghost" data-mvto="1">⏫ الأول</button><button class="btn ghost" data-mvto="${names.length}">⏬ الأخير</button>
+        <span class="row" style="gap:4px">🔢 <input type="number" min="1" max="${names.length}" id="mvNum" placeholder="رقم" style="width:64px;padding:6px"><button class="btn ghost" id="mvGo">نقل</button></span>
+        <button class="btn ghost" data-late="1">${late.has(n)?'🕓 شيل علامة متأخر':'🕓 علّمه متأخر'}</button>
+        ${P?'':`<button class="btn red" data-del="${i}">🗑️ حذف</button>`}
+        <button class="btn ghost" data-close="1">✖</button></div>`:''}</div>`).join('')
+    + (P?`<div class="ordbar"><button class="btn" id="ordSave">💾 حفظ الترتيب</button><button class="btn ghost" id="ordCancel">إلغاء</button></div>`:'')
+    + `</div>`;
   if(d.weeks.length) h += `<div class="card"><h3>📅 الأسابيع</h3>` + d.weeks.map((w,k)=>`<div class="sline"><span class="nm">${esc(w)}</span><button class="btn red sm" data-delwk="${k}">🗑️</button></div>`).join('') + `</div>`;
   $('#stuBody').innerHTML = h;
 }
@@ -841,6 +869,12 @@ $('#stuBody').addEventListener('change', async e=>{
   }
   if(t.dataset.oon!=null && OCR.res){ OCR.res.items[+t.dataset.oon].on=t.checked; const b=$('#ocrAdd'); if(b) b.textContent=`➕ إضافة المحدد (${OCR.res.items.filter(x=>x.on).length})`; }
 });
+let lpT=null;
+function openLP(el){ const i=+el.dataset.lp; ORD.sel = ORD.sel===i ? -1 : i; renderStu(); if(navigator.vibrate) try{ navigator.vibrate(30); }catch(_){} }
+$('#stuBody').addEventListener('pointerdown', e=>{ const el=e.target.closest('[data-lp]'); if(!el) return; clearTimeout(lpT); lpT=setTimeout(()=>{ lpT=null; openLP(el); }, 500); });
+['pointerup','pointercancel','pointerleave'].forEach(ev=>$('#stuBody').addEventListener(ev, ()=>{ clearTimeout(lpT); }));
+$('#stuBody').addEventListener('pointermove', e=>{ if(lpT && (Math.abs(e.movementX)+Math.abs(e.movementY))>6){ clearTimeout(lpT); lpT=null; } });
+$('#stuBody').addEventListener('contextmenu', e=>{ const el=e.target.closest('[data-lp]'); if(!el) return; e.preventDefault(); if(lpT){ clearTimeout(lpT); lpT=null; openLP(el); } });
 $('#stuBody').addEventListener('input', e=>{ const t=e.target; if(t.dataset.otx!=null && OCR.res) OCR.res.items[+t.dataset.otx].t=t.value; });
 $('#stuBody').addEventListener('click', async e=>{
   const t=e.target;
@@ -868,8 +902,30 @@ $('#stuBody').addEventListener('click', async e=>{
     const names=$('#addNames').value.split('\n').map(s=>s.trim()).filter(Boolean); if(!names.length) return;
     t.disabled=true; try{ await api('addStudents',{cls:S.cls,names}); await loadClass(); toast(`✅ اتضاف ${names.length} طالب`); }catch(er){ toast(er.message,true); } t.disabled=false; return;
   }
+  if(t.id==='sortA' || t.id==='sortAll'){
+    ordStart(); const late=new Set(ORD.late);
+    if(t.id==='sortAll'){ ORD.names.sort(arCmp); ORD.late=[]; }
+    else { const reg=ORD.names.filter(n=>!late.has(n)).sort(arCmp), lt=ORD.names.filter(n=>late.has(n)); ORD.names=reg.concat(lt); }
+    ORD.sel=-1; renderStu(); toast('راجع الترتيب ودوس 💾 حفظ الترتيب'); return;
+  }
+  const it=t.closest('.sitem'); const si=it?+it.dataset.i:-1;
+  if(t.dataset.close){ ORD.sel=-1; renderStu(); return; }
+  if(t.dataset.mv){ ordMove(si, si+(+t.dataset.mv)); return; }
+  if(t.dataset.mvto){ ordMove(si, +t.dataset.mvto-1); return; }
+  if(t.id==='mvGo'){ const v=+$('#mvNum').value; if(v>=1) ordMove(si, v-1); return; }
+  if(t.dataset.late){ ordStart(); const n=ORD.names[si]; ORD.late = ORD.late.includes(n) ? ORD.late.filter(x=>x!==n) : ORD.late.concat([n]); renderStu(); return; }
+  if(t.id==='ordCancel'){ ORD.names=null; ORD.sel=-1; renderStu(); return; }
+  if(t.id==='ordSave'){
+    t.disabled=true; t.textContent='⏳ بيحفظ…';
+    try{
+      await flush(); if(S.q.some(x=>x.cls===S.cls)) throw new Error('فيه درجات لسه ماتحفظتش — استنى النت وجرب تاني');
+      await api('reorder',{cls:S.cls, order:ORD.names, late:ORD.late});
+      ORD.names=null; ORD.sel=-1; S.open=-1; S.topen=-1; await loadClass(); toast('✅ الترتيب اتحفظ في الشيت');
+    }catch(er){ toast(er.message,true); t.disabled=false; t.textContent='💾 حفظ الترتيب'; }
+    return;
+  }
   if(t.dataset.ren!=null){
-    const i=+t.dataset.ren, line=t.closest('.sline');
+    const i=+t.dataset.ren, line=t.closest('.sitem')||t.closest('.sline');
     if(t.dataset.save){ const nn=line.querySelector('input').value.trim(); if(!nn) return; t.disabled=true; try{ await api('renameStudent',{cls:S.cls,row:i,old:S.d.names[i],name:nn}); await loadClass(); toast('✅ اتعدّل'); }catch(er){ toast(er.message,true); t.disabled=false; } return; }
     line.querySelector('.nm').innerHTML=`<input type="text" value="${esc(S.d.names[i])}">`; t.textContent='💾'; t.dataset.save=1; line.querySelector('input').focus(); return;
   }
