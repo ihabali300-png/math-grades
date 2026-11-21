@@ -112,6 +112,7 @@ public class MainActivity extends Activity {
             }
         }, "AndroidPrint");
         setContentView(web);
+        if (b == null) web.clearCache(true); // دايماً يجيب آخر نسخة من الموقع
         if (b != null) web.restoreState(b); else web.loadUrl(BuildConfig.APP_URL);
     }
 
