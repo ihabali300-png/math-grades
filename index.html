@@ -63,7 +63,7 @@ textarea{min-height:120px;resize:vertical;line-height:1.7}
 .cell.ro .v{color:var(--acc)}
 .nav{display:flex;gap:8px;margin-top:12px}
 .nav .btn{flex:1}
-.pk{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;background:rgba(0,0,0,.35)}
+.pk{position:fixed;top:0;right:0;bottom:0;left:0;z-index:50;display:flex;align-items:flex-end;background:rgba(0,0,0,.35)}
 .pkbox{width:100%;max-width:760px;margin:auto auto 0;background:#101a13;border-top:2px solid var(--acc);border-radius:20px 20px 0 0;padding:10px 12px calc(14px + env(safe-area-inset-bottom))}
 .pkhead{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .pkhead b{flex:1;text-align:center;font-size:15px}
@@ -189,7 +189,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 6;
+const APP_V = 7;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwuEK8gV3b0rtd3eVTCpWLyOPNifvMuNz9nJ--hMvMnXUhqIY6MpU7py56699_bW-l1/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;                       // أعمدة الأسبوع في الشيت
@@ -271,7 +271,7 @@ function termCalc(i){ // الشهرين من 15 + متوسط الأسابيع م
   const t=trm(i);
   const m=[t[0],t[1]].map(num).filter(x=>x!=null);
   t[2] = m.length ? r1(m.reduce((a,c)=>a+c,0)/m.length) : '';
-  const nw=S.d.weeks.length; t[3] = nw ? (S.d.vals[i][(nw-1)*W+11] ?? '') : '';
+  const nw=S.d.weeks.length; t[3] = nw ? (S.d.vals[i][(nw-1)*W+11]==null ? '' : S.d.vals[i][(nw-1)*W+11]) : '';
   const p=[t[2],t[3]].map(num).filter(x=>x!=null);
   t[4] = p.length ? r1(p.reduce((a,c)=>a+c,0)) : '';
   return t;
