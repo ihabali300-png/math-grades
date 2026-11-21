@@ -66,6 +66,9 @@ function doPost(e) {
   }
 }
 
+// «غ» = غياب: بيتكتب نص في الشيت، والمعادلات بتتجاهله
+function cellVal(x) { if (x === '' || x === null || x === undefined) return ''; if (String(x).trim() === 'غ') return 'غ'; const n = Number(x); return isNaN(n) ? '' : n; }
+
 function out(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 
 function isClass(sh) { return sh.getRange(HDR, 1, 1, 2).getDisplayValues()[0].join('|') === 'م|الاسم'; }
@@ -273,7 +276,7 @@ const ACTIONS = {
     const k = Number(b.week);
     if (!(k >= 0 && k < nWeeks(sh))) throw new Error('الأسبوع مش موجود');
     const s = startCol(k);
-    const v = (b.vals || []).map(x => (x === '' || x === null || x === undefined) ? '' : Number(x));
+    const v = (b.vals || []).map(cellVal);
     sh.getRange(r, s, 1, 6).setValues([v.slice(0, 6)]);
     sh.getRange(r, s + 8, 1, 2).setValues([[v[6], v[7]]]);
     return {};
@@ -282,7 +285,7 @@ const ACTIONS = {
   saveTerm: (ss, b) => {
     const sh = getSh(ss, b.cls);
     const r = findRow(sh, Number(b.row), String(b.name));
-    const v = (b.vals || []).map(x => (x === '' || x === null || x === undefined) ? '' : Number(x));
+    const v = (b.vals || []).map(cellVal);
     sh.getRange(r, termCol(sh), 1, 2).setValues([[v[0], v[1]]]);
     return {};
   },

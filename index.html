@@ -103,6 +103,7 @@ textarea{min-height:120px;resize:vertical;line-height:1.7}
 .cell small{display:block;color:var(--mut);font-size:12px;margin-bottom:2px}
 .cell .v{font-size:22px;font-weight:800}
 .cell.empty .v{color:#4b5d51}
+.cell.abs .v{color:#f87171}
 .cell.cur{border-color:var(--acc);box-shadow:0 0 0 2px #a3e63544}
 .cell.ro{background:#1b2a12;border-color:#2f4a1c}
 .cell.ro .v{color:var(--acc)}
@@ -249,7 +250,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 24;
+const APP_V = 25;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;
@@ -309,7 +310,8 @@ async function api(action, p={}){
   }
   return j;
 }
-const num = v => (v===''||v==null) ? null : +v;
+const ABS = 'غ';                     // غياب — مش بيتحسب في المتوسط ولا المجموع
+const num = v => (v===''||v==null||v===ABS||isNaN(+v)) ? null : +v;
 const r1 = x => Math.round(x*10 + 1e-9)/10;
 function calc(b){
   const av = idx => { const n=idx.map(i=>num(b[i])).filter(x=>x!=null); return n.length ? r1(n.reduce((a,c)=>a+c,0)/n.length) : ''; };
@@ -464,15 +466,15 @@ function stuCard(i){
   let h = `<div class="st ${open?'open':''}" data-i="${i}" data-name="${esc(S.d.names[i])}">
     <div class="sth" data-tap="${i}"><span class="n">${i+1}</span><span class="nm">${esc(S.d.names[i])}</span><span class="dot">${pending?'⏳':''}</span><span class="tot ${totCls}">${fmt(b[10])}<small style="color:var(--mut);font-weight:400">/25</small></span></div>`;
   if(open){
-    const c = idx => `<div class="cell ${b[idx]===''?'empty':''} ${S.cur===idx?'cur':''}" data-cell="${idx}"><small>${idx===8?'من 10':idx===9?'من 5':'الدرس '+(Math.floor(idx/2)+1)}</small><div class="v">${fmt(b[idx])}</div></div>`;
+    const c = idx => `<div class="cell ${b[idx]===''?'empty':''} ${b[idx]===ABS?'abs':''} ${S.cur===idx?'cur':''}" data-cell="${idx}"><small>${idx===8?'من 10':idx===9?'من 5':'الدرس '+(Math.floor(idx/2)+1)}</small><div class="v">${fmt(b[idx])}</div></div>`;
     h += `<div class="stb">
       <div class="lab"><b>📗 كراسة الحصة</b><span class="avg">المتوسط ${fmt(b[6])} / 5</span></div>
       <div class="g3">${c(0)}${c(2)}${c(4)}</div>
       <div class="lab"><b>📕 كراسة الواجب</b><span class="avg">المتوسط ${fmt(b[7])} / 5</span></div>
       <div class="g3">${c(1)}${c(3)}${c(5)}</div>
       <div class="lab"><b>⭐ التقييم والسلوك</b></div>
-      <div class="g3"><div class="cell ${b[8]===''?'empty':''} ${S.cur===8?'cur':''}" data-cell="8"><small>تقييم أسبوعي /10</small><div class="v">${fmt(b[8])}</div></div>
-        <div class="cell ${b[9]===''?'empty':''} ${S.cur===9?'cur':''}" data-cell="9"><small>سلوك ومواظبة /5</small><div class="v">${fmt(b[9])}</div></div>
+      <div class="g3"><div class="cell ${b[8]===''?'empty':''} ${b[8]===ABS?'abs':''} ${S.cur===8?'cur':''}" data-cell="8"><small>تقييم أسبوعي /10</small><div class="v">${fmt(b[8])}</div></div>
+        <div class="cell ${b[9]===''?'empty':''} ${b[9]===ABS?'abs':''} ${S.cur===9?'cur':''}" data-cell="9"><small>سلوك ومواظبة /5</small><div class="v">${fmt(b[9])}</div></div>
         <div class="cell ro"><small>المجموع /25</small><div class="v">${fmt(b[10])}</div></div></div>
       <div class="lab"><b>📈 المتوسط التراكمي</b><span class="avg">${fmt(b[11])} / 25</span></div>
       <div class="nav"><button class="btn" data-next="${i}">التالي ‹</button><button class="btn ghost" data-prev="${i}">› السابق</button></div>
@@ -506,7 +508,7 @@ function termCard(i){
   let h=`<div class="st ${open?'open':''}" data-i="${i}" data-name="${esc(S.d.names[i])}">
     <div class="sth" data-ttap="${i}"><span class="n">${i+1}</span><span class="nm">${esc(S.d.names[i])}</span><span class="dot">${pending?'⏳':''}</span><span class="tot ${f===2?'full':f?'part':''}">${fmt(t[4])}<small style="color:var(--mut);font-weight:400">/40</small></span></div>`;
   if(open){
-    const c=idx=>`<div class="cell ${t[idx]===''?'empty':''} ${S.cur===idx?'cur':''}" data-tcell="${idx}"><small>${idx?'الشهر التاني /15':'الشهر الأول /15'}</small><div class="v">${fmt(t[idx])}</div></div>`;
+    const c=idx=>`<div class="cell ${t[idx]===''?'empty':''} ${t[idx]===ABS?'abs':''} ${S.cur===idx?'cur':''}" data-tcell="${idx}"><small>${idx?'الشهر التاني /15':'الشهر الأول /15'}</small><div class="v">${fmt(t[idx])}</div></div>`;
     h+=`<div class="stb">
       <div class="lab"><b>📝 اختبارات الشهور</b></div>
       <div class="g3">${c(0)}${c(1)}<div class="cell ro"><small>متوسط الشهرين /15</small><div class="v">${fmt(t[2])}</div></div></div>
@@ -784,17 +786,18 @@ function renderStu(){
 let PK = null;
 function openPicker(i, idx, mode){
   mode = mode || 'wk';
-  const max = mode==='term' ? 15 : MAX(idx), vals=[''];
+  const max = mode==='term' ? 15 : MAX(idx), vals=[ABS, ''];
   for(let v=0; v<=max+1e-9; v+=0.5) vals.push(r1(v));
   PK = {i, idx, vals, mode};
   const b = mode==='term' ? trm(i) : blk(i,S.wk);
   $('#pkT').textContent = mode==='term' ? (idx?'الشهر التاني /15':'الشهر الأول /15') : LABEL[idx];
-  $('#wheel').innerHTML = '<div class="pad"></div>' + vals.map((v,n)=>`<div data-n="${n}">${v===''?'—':v}</div>`).join('') + '<div class="pad"></div>';
+  $('#wheel').innerHTML = '<div class="pad"></div>' + vals.map((v,n)=>`<div data-n="${n}" ${v===ABS?'style="color:#f87171"':''}>${v===''?'—':v}</div>`).join('') + '<div class="pad"></div>';
   $('#pk').classList.remove('hide');
-  let n = vals.findIndex(v=>v!=='' && b[idx]!=='' && +v===+b[idx]); if(n<0) n = b[idx]==='' ? (idx===9?vals.length-1:0) : 0;
+  const E = vals.indexOf('');
+  let n = vals.findIndex(v=>v===b[idx] || (num(v)!=null && num(b[idx])!=null && +v===+b[idx])); if(n<0) n = (b[idx]==='' && idx===9 && mode!=='term') ? vals.length-1 : E;
   PK.n = -1;
   const auto5 = mode==='wk' && b[idx]==='' && idx===9;
-  if(mode==='term' && b[idx]==='') n=0;
+  if(mode==='term' && b[idx]==='') n=E;
   requestAnimationFrame(()=>{ $('#wheel').scrollTop = n*IH; highlight(n); if(auto5) applyN(n); });
   S.cur = idx; mode==='term' ? refreshT(i) : refreshCard(i);
 }
