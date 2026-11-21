@@ -172,7 +172,12 @@ textarea{min-height:120px;resize:vertical;line-height:1.7}
 table{border-collapse:collapse;font-size:14px;min-width:100%}
 th,td{padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:center}
 th{position:sticky;top:0;background:var(--card2);z-index:2;font-size:13px}
-td.nm,th.nm{position:sticky;right:0;background:var(--card);text-align:right;z-index:1}
+td.nm,th.nm{position:sticky;right:0;background:var(--card);text-align:right;z-index:1;width:var(--nmw,170px);min-width:var(--nmw,170px);max-width:var(--nmw,170px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-shadow:-1px 0 0 var(--acc)}
+td.nm .mut{font-size:12px;margin-inline-end:6px}
+th.nm{overflow:visible}
+.rz{position:absolute;left:-12px;top:0;bottom:0;width:24px;cursor:col-resize;touch-action:none;display:flex;align-items:center;justify-content:center;z-index:5}
+.rz::after{content:'';width:6px;height:28px;border-radius:3px;background:var(--acc);box-shadow:0 0 0 3px #0b120d}
+.rzhint{font-size:12px;color:var(--mut);margin:6px 2px 0}
 th.nm{z-index:3;background:var(--card2)}
 .toast{pointer-events:none;position:fixed;top:120px;left:50%;transform:translateX(-50%);background:#1b2a12;border:1px solid var(--acc);color:var(--txt);padding:10px 16px;border-radius:12px;z-index:60;font-size:14px;max-width:90%;text-align:center}
 .toast.err{border-color:var(--red);background:#2a1212}
@@ -297,7 +302,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 36;
+const APP_V = 37;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;
@@ -645,13 +650,13 @@ function renderRes(){
   const d=S.d;
   if(!d.weeks.length && !d.names.length){ $('#resBody').innerHTML='<div class="card">مفيش بيانات لسه.</div>'; return; }
   let h = `<div class="card"><div class="row" style="justify-content:space-between"><b>📊 مجموع كل أسبوع من 25</b>${d.url?`<a class="btn ghost sm" href="${esc(d.url)}" target="_blank" style="text-decoration:none">📄 افتح الشيت</a>`:''}</div></div>`;
-  h += `<div class="tbl"><table><thead><tr><th>م</th><th class="nm">الطالب</th>${d.weeks.map(w=>`<th>${esc(w)}</th>`).join('')}<th>المتوسط التراكمي</th><th>التيرم /40</th></tr></thead><tbody>`;
+  h += `<div class="tbl"><table><thead><tr><th class="nm">الطالب<span class="rz" id="rz" title="اسحب يمين وشمال"></span></th>${d.weeks.map(w=>`<th>${esc(w)}</th>`).join('')}<th>المتوسط التراكمي</th><th>التيرم /40</th></tr></thead><tbody>`;
   d.names.forEach((n,i)=>{
     const t = d.weeks.map((_,k)=>blk(i,k)[10]);
     const av = d.weeks.length ? blk(i, d.weeks.length-1)[11] : '';
-    h += `<tr><td class="mut">${i+1}</td><td class="nm">${esc(n)}</td>${t.map(v=>`<td>${fmt(v)}</td>`).join('')}<td style="color:var(--acc);font-weight:700">${fmt(av)}</td><td style="color:var(--yel);font-weight:700">${fmt(termCalc(i)[4])}</td></tr>`;
+    h += `<tr><td class="nm"><span class="mut">${i+1}</span>${gIcon(n)}${esc(n)}</td>${t.map(v=>`<td>${fmt(v)}</td>`).join('')}<td style="color:var(--acc);font-weight:700">${fmt(av)}</td><td style="color:var(--yel);font-weight:700">${fmt(termCalc(i)[4])}</td></tr>`;
   });
-  h += '</tbody></table></div>';
+  h += '</tbody></table></div><div class="rzhint">↔️ اسحب الشريط الأخضر جنب «الطالب» يمين وشمال عشان تكبّر أو تصغّر عمود الأسماء</div>';
   $('#resBody').innerHTML = h;
 }
 const COLS=[[7,'ك واجب',5],[6,'ك حصة',5],[8,'تقييم أسبوعي',10],[9,'سلوك ومواظبة',5],[10,'المجموع',25]];
@@ -1055,6 +1060,16 @@ function ordSel(kind){
   else if(kind==='up'||kind==='down'){ const i=ORD.names.indexOf(sel[0]); ordMove(i, i+(kind==='up'?-1:1)); return; }
   renderStu(); toast('راجع الترتيب ودوس 💾 حفظ الترتيب');
 }
+// سحب عرض عمود الأسماء في النتائج (زي السلايدر)
+document.documentElement.style.setProperty('--nmw', LS.get('nmw',170)+'px');
+document.addEventListener('pointerdown', e=>{
+  const h=e.target.closest('#rz'); if(!h) return;
+  e.preventDefault(); const th=h.parentElement, right=th.getBoundingClientRect().right;
+  try{ h.setPointerCapture(e.pointerId); }catch(_){}
+  const mv=ev=>{ const w=Math.max(80, Math.min(innerWidth*0.8, right-ev.clientX)); document.documentElement.style.setProperty('--nmw', Math.round(w)+'px'); };
+  const up=ev=>{ h.removeEventListener('pointermove',mv); h.removeEventListener('pointerup',up); h.removeEventListener('pointercancel',up); LS.set('nmw', parseInt(getComputedStyle(document.documentElement).getPropertyValue('--nmw'))||170); };
+  h.addEventListener('pointermove',mv); h.addEventListener('pointerup',up); h.addEventListener('pointercancel',up);
+});
 function renderStu(){
   const d=S.d;
   let h = `<details class="acc" ${OCR.imgs.some(Boolean)||OCR.res?'open':''}><summary>📸 أسماء من الكاميرا</summary><div class="accb">${ocrCard()}</div></details>`;
