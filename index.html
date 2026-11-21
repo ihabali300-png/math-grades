@@ -287,7 +287,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 32;
+const APP_V = 33;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;
@@ -770,7 +770,8 @@ function ocrCard(){
     <button class="btn" id="ocrGo" style="width:100%" ${n?'':'disabled'}>${OCR.busy?'⏳ جوجل بيقرا…':`🔍 اقرأ الأسماء (${n} صورة)`}</button>`;
   if(OCR.res){
     const r=OCR.res, sel=r.items.filter(x=>x.on).length;
-    h+=`<div class="mut" style="margin:10px 0 4px">✅ ${r.items.filter(x=>x.st==='good').length} اسم متأكد منه • ⚠️ ${r.items.filter(x=>x.st==='warn').length} محتاج مراجعة • 🚫 ${r.items.filter(x=>x.st==='dup').length} موجود قبل كده</div>`;
+    h+=`<div class="mut" style="margin:10px 0 4px">✅ ${r.items.filter(x=>x.st==='good').length} اسم جديد • ⚠️ ${r.items.filter(x=>x.st==='warn').length} محتاج مراجعة${r.hidden?` • 🚫 ${r.hidden} موجودين في الفصل (مخفيين)`:''}</div>`;
+    if(!r.items.length) h+=`<div class="card" style="text-align:center">🎉 كل الأسماء اللي في الصور موجودة في الفصل</div>`;
     h+=r.items.map((x,i)=>`<div class="orow"><input type="checkbox" data-oon="${i}" ${x.on?'checked':''}><input type="text" data-otx="${i}" value="${esc(x.t)}"><span class="obadge ${x.st}">${x.st==='dup'?'موجود':x.st==='good'?'✓ '+x.n+'/'+r.used:'⚠️ '+x.n+'/'+r.used}</span></div>`).join('');
     h+=`<button class="btn" id="ocrAdd" style="width:100%;margin-top:10px">➕ إضافة المحدد (${sel})</button>`;
   }
@@ -809,11 +810,14 @@ function ocrMatch(texts){
     const cnt={}; c.v.forEach(v=>cnt[v.t]=(cnt[v.t]||0)+1);
     const t=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]||b.length-a.length)[0];
     const pos=c.v.reduce((a,v)=>a+v.pos,0)/c.v.length;
-    const dup=S.d.names.some(n=>simR(n,t)>=0.88);
-    const st=dup?'dup':(c.ph.size>=need?'good':'warn');
+    const good=c.ph.size>=need;
+    // الموجود في الفصل مايظهرش (والمش متأكد منه بنستخدم معاه تشابه أقل عشان القراية الغلط للاسم الموجود)
+    const dup=S.d.names.some(n=>simR(n,t)>=(good?0.88:0.8));
+    const st=dup?'dup':(good?'good':'warn');
     return {t, n:c.ph.size, pos, st, on:st==='good'};
   }).sort((a,b)=>a.pos-b.pos);
-  return {used, items};
+  const hidden=items.filter(x=>x.st==='dup').length;
+  return {used, items:items.filter(x=>x.st!=='dup'), hidden};
 }
 const ORD={cls:null, names:null, late:null, sel:-1};
 // درجة واحدة لمجموعة طلاب في الأسبوع المختار (بتتحفظ حتى من غير نت)
