@@ -237,7 +237,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 19;
+const APP_V = 20;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;                       // أعمدة الأسبوع في الشيت
@@ -372,7 +372,8 @@ async function loadClasses(){
   if(S.screen==='class' && S.cls) await loadClass();
   if(!S.classes.length && S.api) openAddCls(true);
 }
-function plainName(c){ return String(c).replace(/-/g,'/'); }
+// العرض: الفصل/الصف (زي 2/3 = الصف الثالث فصل 2) — بيتقرا من اليمين: الصف ثم الفصل
+function plainName(c){ const p=parseCls(c); return p ? p.s+'/'+p.g : String(c).replace(/-/g,'/'); }
 function dispName(c){ return '\u2066'+plainName(c)+'\u2069'; } // عزل الاتجاه عشان 2/3 ماتتقلبش
 function renderHome(){
   const g=$('#cgrid'); if(!g) return;
@@ -384,7 +385,7 @@ function renderHome(){
 const GRADES=['','الأول','الثاني','الثالث','الرابع','الخامس','السادس'];
 function parseCls(c){ const m=String(c||'').match(/^\s*(\d+)\s*[\/-]\s*(\d+)\s*$/); return m?{g:+m[1],s:+m[2]}:null; }
 function clsLabel(c){ const p=parseCls(c); return p ? `الصف ${GRADES[p.g]||p.g} • فصل ${p.s}` : ''; }
-function cpickHTML(g,s){ return `<div class="cpick"><div class="cell" data-cg="1"><small>الصف</small><div class="v">${GRADES[g]||g}</div></div><div class="cell" data-cs="1"><small>الفصل</small><div class="v">${s}</div></div><div class="prev">\u2066${g}/${s}\u2069</div></div>`; }
+function cpickHTML(g,s){ return `<div class="cpick"><div class="cell" data-cg="1"><small>الصف</small><div class="v">${GRADES[g]||g}</div></div><div class="cell" data-cs="1"><small>الفصل</small><div class="v">${s}</div></div><div class="prev">\u2066${s}/${g}\u2069</div></div>`; }
 function genPicker(title, vals, labels, cur, onSet){
   PK={mode:'gen', vals, onSet, i:null, n:-1};
   $('#pkT').textContent=title;
