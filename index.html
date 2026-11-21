@@ -79,6 +79,13 @@ main{padding:12px 16px;max-width:760px;margin:auto;padding-bottom:110px}
 .rarr{display:flex;gap:6px;margin-inline-start:auto}
 .rarr button{width:42px;height:38px;border-radius:10px;border:1px solid #2f4a1c;background:#1b2a12;font-size:18px;color:var(--acc)}
 .rarr button:active{background:#2a3f1d}
+.wkbar{display:flex;gap:6px;align-items:stretch;margin-bottom:10px}
+.wkbar button{border:1px solid var(--line);background:var(--card);border-radius:12px;font-size:18px;min-width:44px;color:var(--txt)}
+.wkbar .wkcur{flex:1;font-size:15px;font-weight:700;padding:10px 8px;background:#1b2a12;border-color:var(--acc);color:var(--acc)}
+.wkbar .lk.on{background:#3a1717;border-color:#5b2323;color:var(--red)}
+.wkbar button:disabled{opacity:.3}
+.lockbn{background:#2a1212;border:1px solid #5b2323;color:#fca5a5;border-radius:12px;padding:9px 12px;margin-bottom:10px;font-size:14px;text-align:center}
+.st.locked .cell{cursor:default}
 .snack{position:fixed;left:12px;right:12px;bottom:84px;z-index:35;display:flex;align-items:center;gap:8px;background:#e7f0e9;color:#0b120d;border-radius:12px;padding:8px 8px 8px 14px;box-shadow:0 6px 18px rgba(0,0,0,.45);max-width:740px;margin:auto}
 .snack b{flex:1;font-size:14px}
 .snack .btn{padding:8px 12px;font-size:14px}
@@ -287,7 +294,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 33;
+const APP_V = 34;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;
@@ -502,9 +509,23 @@ function render(){
   if(!S.d){ $('#rasdBody').innerHTML = S.cls ? '' : '<div class="card mut">مفيش فصول لسه — دوس «＋ فصل».</div>'; $('#wkChips').innerHTML=''; $('#resBody').innerHTML=''; $('#stuBody').innerHTML=''; $('#termBody').innerHTML=''; $('#printBody').innerHTML=''; return; }
   if(S.view==='rasd') renderRasd(); else if(S.view==='term') renderTerm(); else if(S.view==='res') renderRes(); else if(S.view==='print') renderPrint(); else renderStu();
 }
+/* ---------- قفل الأسبوع (للعرض بس) ---------- */
+function locks(){ return LS.get('locks',{}); }
+function isLocked(k){ k=k==null?S.wk:k; const w=S.d&&S.d.weeks[k]; return !!w && (locks()[S.cls]||[]).includes(w); }
+function setLock(k,on){ const L=locks(), w=S.d.weeks[k], a=new Set(L[S.cls]||[]); on?a.add(w):a.delete(w); L[S.cls]=[...a]; LS.set('locks',L); }
 function renderWeeks(){
-  $('#wkChips').innerHTML = S.d.weeks.map((w,k)=>`<button class="chip ${k===S.wk?'on':''}" data-k="${k}">${esc(w)}</button>`).join('') + `<button class="chip add" data-k="+">＋ أسبوع</button>`;
-  const on=$('#wkChips .chip.on'); if(on) on.scrollIntoView({inline:'center',block:'nearest'});
+  const n=S.d.weeks.length;
+  if(!n){ $('#wkChips').innerHTML=`<div class="wkbar"><button class="wkcur" data-wk="add">＋ أول أسبوع</button></div>`; return; }
+  const lk=isLocked();
+  $('#wkChips').innerHTML=`<div class="wkbar">
+    <button data-wk="prev" ${S.wk<=0?'disabled':''} title="الأسبوع اللي قبله">›</button>
+    <button class="wkcur" data-wk="pick">${lk?'🔒 ':'📅 '}${esc(S.d.weeks[S.wk])} ▾</button>
+    <button data-wk="next" ${S.wk>=n-1?'disabled':''} title="الأسبوع اللي بعده">‹</button>
+    <button class="lk ${lk?'on':''}" data-wk="lock" title="قفل الأسبوع">${lk?'🔒':'🔓'}</button>
+    <button data-wk="add" title="أسبوع جديد">＋</button></div>`;
+}
+function weekSheet(){
+  openSheet('📅 الأسابيع', S.d.weeks.map((w,k)=>`<button class="sitm" data-act="wk:${k}" style="${k===S.wk?'background:#1b2a12;color:var(--acc);font-weight:800':''}"><span class="e">${isLocked(k)?'🔒':'📅'}</span>${esc(w)}</button>`).join(''));
 }
 function renderRasd(){
   renderWeeks();
@@ -514,7 +535,8 @@ function renderRasd(){
   const k=S.wk;
   const empty9 = S.d.names.filter((_,i)=>blk(i,k)[9]==='').length;
   let h = gBar() + `<div class="row" style="margin-bottom:10px"><input type="search" id="srch" placeholder="🔎 دوّر على اسم الطالب" value="${esc(S.search)}" style="flex:1"></div>`;
-  if(empty9) h += `<button class="btn ghost sm" id="bulk9" style="margin-bottom:10px;width:100%">⚡ سلوك ومواظبة 5 لـ ${empty9} طالب فاضيين</button>`;
+ if(isLocked()) h += `<div class="lockbn">🔒 الأسبوع ده مقفول — للعرض بس</div>`;
+  if(empty9 && !isLocked()) h += `<button class="btn ghost sm" id="bulk9" style="margin-bottom:10px;width:100%">⚡ سلوك ومواظبة 5 لـ ${empty9} طالب فاضيين</button>`;
   h += S.d.names.map((n,i)=>stuCard(i)).join('');
   B.innerHTML = h;
   applySearch();
@@ -523,7 +545,7 @@ function stuCard(i){
   const k=S.wk, b=blk(i,k), f=filled(b), open=S.open===i;
   const pending = S.q.some(x=>x.cls===S.cls && x.row===i && x.week===k);
   const totCls = f===8 ? 'full' : f ? 'part' : '';
-  let h = `<div class="st ${open?'open':''}" data-i="${i}" data-name="${esc(S.d.names[i])}">
+  let h = `<div class="st ${open?'open':''} ${isLocked()?'locked':''}" data-i="${i}" data-name="${esc(S.d.names[i])}">
     <div class="sth" data-tap="${i}"><span class="n">${i+1}</span><span class="nm">${gIcon(S.d.names[i])}${esc(S.d.names[i])}</span><span class="dot">${pending?'⏳':''}</span><span class="tot ${totCls}">${fmt(b[10])}<small style="color:var(--mut);font-weight:400">/25</small></span></div>`;
   if(open){
     const c = idx => `<div class="cell ${b[idx]===''?'empty':''} ${b[idx]===ABS?'abs':''} ${S.cur===idx?'cur':''}" data-cell="${idx}"><small>${idx===8?'من 10':idx===9?'من 5':'الدرس '+(Math.floor(idx/2)+1)}</small><div class="v">${fmt(b[idx])}</div></div>`;
@@ -935,6 +957,7 @@ async function selAction(act, el){
     case 'grade': {
       if(!need()) return; closeSheet();
       if(!S.d.weeks.length) return toast('ضيف أسبوع الأول من «الرصد»',true);
+      if(isLocked()) return toast('🔒 الأسبوع المفتوح مقفول — افتحه الأول',true);
       const F=[9,8,0,2,4,1,3,5];
       genPicker('الخانة — '+S.d.weeks[S.wk], F, F.map(x=>LABEL[x]), 9, f=>{ S._bf=f; });
       S._bf=9; S._bstep='field'; return;
@@ -968,6 +991,7 @@ async function selAction(act, el){
       return;
     }
   }
+  if(act.startsWith('wk:')){ S.wk=+act.slice(3); LS.set('wk_'+S.cls,S.wk); S.open=-1; closeSheet(); renderRasd(); return; }
   if(act.startsWith('rup:')||act.startsWith('rdn:')){ const i=+act.slice(4); ordMove(i, i+(act[1]==='u'?-1:1)); return; }
   if(act.startsWith('mvc:')){ const to=act.slice(4); confirmSheet('🔀 نقل', `نقل <b>${S.sel.size}</b> طالب لفصل <b>${dispName(to)}</b> بدرجاتهم؟`, 'نقل', 'mvgo:'+to); return; }
   if(act.startsWith('mvgo:')){ const to=act.slice(5); el.disabled=true; el.textContent='⏳ بينقل…'; await doMove(to,[...S.sel],el,true); closeSheet(); return; }
@@ -1013,6 +1037,7 @@ function renderStu(){
 let PK = null;
 function openPicker(i, idx, mode){
   mode = mode || 'wk';
+  if(mode==='wk' && isLocked()){ toast('🔒 الأسبوع ده مقفول — افتحه من زرار القفل',true); return; }
   const max = mode==='term' ? 15 : MAX(idx), vals=[ABS, ''];
   for(let v=0; v<=max+1e-9; v+=0.5) vals.push(r1(v));
   PK = {i, idx, vals, mode};
@@ -1121,9 +1146,12 @@ $('#cgrid').addEventListener('click', async e=>{
   }
 });
 $('#wkChips').onclick = e=>{
-  const c=e.target.closest('.chip'); if(!c) return;
-  if(c.dataset.k==='+'){ const n=S.d.weeks.length+1; $('#wkName').value='الأسبوع '+n; $('#wkDate').value=new Date().toISOString().slice(0,10); $('#addWkCard').classList.remove('hide'); return; }
-  S.wk=+c.dataset.k; LS.set('wk_'+S.cls,S.wk); S.open=-1; renderRasd();
+  const c=e.target.closest('[data-wk]'); if(!c) return;
+  const a=c.dataset.wk, n=S.d.weeks.length;
+  if(a==='prev'||a==='next'){ S.wk=Math.max(0,Math.min(n-1,S.wk+(a==='next'?1:-1))); LS.set('wk_'+S.cls,S.wk); S.open=-1; renderRasd(); return; }
+  if(a==='pick'){ weekSheet(); return; }
+  if(a==='lock'){ const on=!isLocked(); setLock(S.wk,on); S.open=-1; renderRasd(); toast(on?'🔒 الأسبوع اتقفل — للعرض بس':'🔓 الأسبوع اتفتح للتعديل'); return; }
+  if(a==='add'){ const n=S.d.weeks.length+1; $('#wkName').value='الأسبوع '+n; $('#wkDate').value=new Date().toISOString().slice(0,10); $('#addWkCard').classList.remove('hide'); return; }
 };
 $('#addWkClose').onclick = ()=>$('#addWkCard').classList.add('hide');
 $('#addWkGo').onclick = async ()=>{
