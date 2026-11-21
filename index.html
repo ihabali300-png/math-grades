@@ -283,7 +283,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 29;
+const APP_V = 30;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;
@@ -937,7 +937,7 @@ function renderStu(){
   const one = S.sel.size===1 ? [...S.sel][0] : null;
   h += `<div class="card"><h3>👥 الطلاب (${names.length})</h3>${gBar()}
     ${unk && !P && !S.selMode ? `<button class="btn ghost sm" id="selGo" style="width:100%;margin-bottom:8px">👦👧 ${unk} طالب من غير تحديد — حدّد الأولاد والبنات</button>`:''}
-    ${S.selMode?'':`<div class="row" style="margin-bottom:6px"><button class="btn ghost sm" id="sortA">🔤 أبجدي (المتأخرين في الآخر)</button><button class="btn ghost sm" id="sortAll">🔤 أبجدي للكل</button></div>
+    ${S.selMode?'':`<div class="row" style="margin-bottom:6px"><button class="btn sm" id="sortBook">📒 أبجدي دفتر (أولاد ثم بنات)</button><button class="btn ghost sm" id="sortA">🔤 أبجدي (المتأخرين في الآخر)</button><button class="btn ghost sm" id="sortAll">🔤 أبجدي للكل</button></div>
     <div class="mut" style="margin-bottom:6px">👆 اضغط مطول على أي اسم عشان تبدأ التحديد</div>`}`
     + names.map((n,i)=>(S.gf!=='all' && gOf(n)!==S.gf) ? '' : `<div class="sitem ${S.sel.has(n)?'sel':''}" data-i="${i}" data-name="${esc(n)}"><div class="sline">${S.selMode?`<input type="checkbox" class="selchk" data-sel="${esc(n)}" ${S.sel.has(n)?'checked':''}>`:''}<span class="mut">${i+1}</span><span class="nm" data-lp="${i}">${gIcon(n)}${esc(n)}${late.has(n)?'<span class="late">🕓 متأخر</span>':''}</span></div></div>`).join('')
     + (P ? `<div class="snack"><b>↕️ الترتيب اتغير</b><button class="btn ghost" id="ordCancel">إلغاء</button><button class="btn" id="ordSave">حفظ</button></div>`:'')
@@ -1138,6 +1138,12 @@ $('#stuBody').addEventListener('click', async e=>{
   if(t.id==='addNamesGo'){
     const names=$('#addNames').value.split('\n').map(s=>s.trim()).filter(Boolean); if(!names.length) return;
     t.disabled=true; try{ await api('addStudents',{cls:S.cls,names}); await loadClass(); toast(`✅ اتضاف ${names.length} طالب`); }catch(er){ toast(er.message,true); } t.disabled=false; return;
+  }
+  if(t.id==='sortBook'){
+    ordStart();
+    const boys=ORD.names.filter(n=>gOf(n)==='b').sort(arCmp), girls=ORD.names.filter(n=>gOf(n)==='g').sort(arCmp), rest=ORD.names.filter(n=>!gOf(n)).sort(arCmp);
+    ORD.names=boys.concat(girls, rest); ORD.sel=-1; renderStu();
+    toast(rest.length ? `📒 الأولاد ثم البنات — و${rest.length} من غير تحديد في الآخر` : '📒 الأولاد أبجدي ثم البنات أبجدي — دوس حفظ'); return;
   }
   if(t.id==='sortA' || t.id==='sortAll'){
     ordStart(); const late=new Set(ORD.late);
