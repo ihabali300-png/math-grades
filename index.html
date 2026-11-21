@@ -236,6 +236,7 @@ th.nm{z-index:3;background:var(--card2)}
   </div>
 
   <section class="home" id="home">
+    <div class="chips" id="yearChips" style="padding-top:0;margin-bottom:6px"></div>
     <h2>🏫 الفصول</h2>
     <div class="cgrid" id="cgrid"></div>
   </section>
@@ -283,7 +284,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 30;
+const APP_V = 31;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;
@@ -323,7 +324,7 @@ const LS = {get:(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSO
 
 const S = {
   api: LS.get('api', DEFAULT_API), classes: LS.get('classes', []), cls: LS.get('cls', ''),
-  d: null, wk: 0, open: -1, topen: -1, screen: 'home', gf: LS.get('gf','all'), selMode:false, sel:new Set(), mvFor:null, cur: -1, view: 'rasd', q: LS.get('q', []), search: '', sending: false
+  d: null, wk: 0, open: -1, topen: -1, screen: 'home', year: +LS.get('year', 2026), gf: LS.get('gf','all'), selMode:false, sel:new Set(), mvFor:null, cur: -1, view: 'rasd', q: LS.get('q', []), search: '', sending: false
 };
 
 // روابط نشر قديمة اتأرشفت — لو متسجلة في الإعدادات تتبدل بالرابط الحالي
@@ -428,7 +429,7 @@ addEventListener('online', flush);
 async function loadClasses(){
   try{ const j=await api('classes'); S.classes=j.classes; LS.set('classes', S.classes); }
   catch(e){ if(!e.net) toast(e.message, true); }
-  if(!S.classes.includes(S.cls)) S.cls = S.classes[0] || '';
+  if(!yearClasses().includes(S.cls)) S.cls = yearClasses()[0] || '';
   LS.set('cls', S.cls); renderCls(); renderHome();
   if(S.screen==='class' && S.cls) await loadClass();
   if(!S.classes.length && S.api) openAddCls(true);
@@ -438,13 +439,23 @@ function plainName(c){ const p=parseCls(c); return p ? p.s+'/'+p.g : String(c).r
 function dispName(c){ return '\u2066'+plainName(c)+'\u2069'; } // عزل الاتجاه عشان 2/3 ماتتقلبش
 function renderHome(){
   const g=$('#cgrid'); if(!g) return;
-  g.innerHTML = S.classes.map(c=>{ const d=LS.get('d3_'+c,null); const meta = (clsLabel(c)?clsLabel(c)+'<br>':'') + (d ? `${d.names.length} طالب • ${d.weeks.length} أسبوع` : 'دوس للفتح');
+  $('#yearChips').innerHTML = allYears().map(y=>`<button class="chip ${y===S.year?'on':''}" data-year="${y}">📅 ${yearLabel(y)}</button>`).join('') + `<button class="chip add" data-year="+">＋ سنة جديدة</button>`;
+  g.innerHTML = yearClasses().map(c=>{ const d=LS.get('d3_'+c,null); const meta = (clsLabel(c)?clsLabel(c)+'<br>':'') + (d ? `${d.names.length} طالب • ${d.weeks.length} أسبوع` : 'دوس للفتح');
     return `<div class="ccard" data-c="${esc(c)}"><button class="open" data-open="${esc(c)}"><div class="big">📘</div><div class="cn">فصل ${esc(dispName(c))}</div><div class="cm">${meta}</div></button>
       <div class="acts"><button class="btn ghost sm" data-ren-c="${esc(c)}">✏️ تعديل</button><button class="btn red sm" data-del-c="${esc(c)}">🗑️ حذف</button></div></div>`; }).join('')
     + `<button class="ccard add" id="homeAdd"><span style="font-size:34px">＋</span>فصل جديد</button>`;
 }
 const GRADES=['','الأول','الثاني','الثالث','الرابع','الخامس','السادس'];
-function parseCls(c){ const m=String(c||'').match(/^\s*(\d+)\s*[\/-]\s*(\d+)\s*$/); return m?{g:+m[1],s:+m[2]}:null; }
+/* ---------- السنة الدراسية ---------- */
+// الفصول القديمة من غير سنة = 2026/2027. أي سنة بعدها اسم التاب بيبدأ بسنتها: «2027 3-2»
+const BASE_YEAR = 2026;
+const clsYear = c => { const m=String(c).match(/^(\d{4})\s+/); return m ? +m[1] : BASE_YEAR; };
+const clsBare = c => String(c).replace(/^\d{4}\s+/, '');
+const yearLabel = y => y+'/'+(+y+1);
+const yearPrefix = y => +y===BASE_YEAR ? '' : y+' ';
+function yearClasses(){ return S.classes.filter(c=>clsYear(c)===S.year); }
+function allYears(){ const ys=new Set(S.classes.map(clsYear)); ys.add(BASE_YEAR); LS.get('years',[]).forEach(y=>ys.add(+y)); ys.add(S.year); return [...ys].sort((a,b)=>a-b); }
+function parseCls(c){ const m=clsBare(c||'').match(/^\s*(\d+)\s*[\/-]\s*(\d+)\s*$/); return m?{g:+m[1],s:+m[2]}:null; }
 function clsLabel(c){ const p=parseCls(c); return p ? `الصف ${GRADES[p.g]||p.g} • فصل ${p.s}` : ''; }
 function cpickHTML(g,s){ return `<div class="cpick"><div class="cell" data-cg="1"><small>الصف</small><div class="v">${GRADES[g]||g}</div></div><div class="cell" data-cs="1"><small>الفصل</small><div class="v">${s}</div></div><div class="prev">\u2066${s}/${g}\u2069</div></div>`; }
 function genPicker(title, vals, labels, cur, onSet){
@@ -479,7 +490,7 @@ async function loadClass(){
 
 /* ---------- رسم ---------- */
 function renderCls(){
-  $('#clsChips').innerHTML = S.classes.map(c=>`<button class="chip ${c===S.cls?'on':''}" data-c="${esc(c)}">فصل ${esc(dispName(c))}</button>`).join('') + `<button class="chip add" data-c="+">＋ فصل</button>`;
+  $('#clsChips').innerHTML = yearClasses().map(c=>`<button class="chip ${c===S.cls?'on':''}" data-c="${esc(c)}">فصل ${esc(dispName(c))}</button>`).join('') + `<button class="chip add" data-c="+">＋ فصل</button>`;
   $('#noApi').classList.toggle('hide', !!S.api);
 }
 function render(){
@@ -591,7 +602,7 @@ function renderPrint(){
   const P=getPH(), sel=LS.get('prSel',{pm:'last',from:1,to:1,pick:'',term:false});
   let h = `<details class="acc" ${S.classes.length>1?'open':''}><summary>🏫 الفصول</summary><div class="accb"><div class="card"><h3>🏫</h3>
     <label class="pchk"><input type="checkbox" id="pcAll"> كل الفصول</label>
-    ${S.classes.map(c=>`<label class="pchk"><input type="checkbox" class="pc" value="${esc(c)}" ${c===S.cls?'checked':''}> فصل ${esc(dispName(c))}</label>`).join('')}
+    ${yearClasses().map(c=>`<label class="pchk"><input type="checkbox" class="pc" value="${esc(c)}" ${c===S.cls?'checked':''}> فصل ${esc(dispName(c))}</label>`).join('')}
   </div></div></details>
   <div class="card"><h3>📄 الصفحات <span class="mut">(كل صفحة = 4 أسابيع)</span></h3>
     <label class="pchk"><input type="radio" name="pm" value="all" ${sel.pm==='all'?'checked':''}> كل الصفحات</label>
@@ -630,7 +641,7 @@ function pagesFor(d, sel){
   return list;
 }
 function procClass(j){
-  const d={names:j.names, weeks:j.weeks, vals:j.vals.map(r=>r.slice()), term:(j.term||[]).map(r=>r.slice()), url:j.url};
+  const d={names:j.names, weeks:j.weeks, vals:j.vals.map(r=>r.slice()), term:(j.term||[]).map(r=>r.slice()), late:j.late||[], gender:j.gender||{}, url:j.url};
   return d;
 }
 async function classData(c){
@@ -818,7 +829,7 @@ function bulkStep(step){
   }
 }
 function mvBox(){
-  const others=S.classes.filter(c=>c!==S.cls);
+  const others=yearClasses().filter(c=>c!==S.cls);
   if(!others.length) return `<div class="mvbox">مفيش فصل تاني — اعمل فصل جديد الأول</div>`;
   return `<div class="mvbox"><b style="display:flex;justify-content:space-between;align-items:center">🔀 نقل ${S.mvFor.length===1?esc(S.mvFor[0]):S.mvFor.length+' طالب'} لـ:<button class="btn ghost sm" id="mvX" style="flex:none;min-width:0;padding:4px 10px">✖</button></b><div class="row" style="margin-top:8px">${others.map(c=>`<button class="btn ghost" data-mvto-c="${esc(c)}">فصل ${esc(dispName(c))}</button>`).join('')}</div><div class="mut" style="margin-top:6px">بيتنقل بدرجاته، والاسم الموجود في الفصل التاني مش بيتكرر</div></div>`;
 }
@@ -858,7 +869,40 @@ function moreSheet(){
 function confirmSheet(title, msg, okLabel, okAct, red){
   openSheet(title, `<div style="padding:4px 14px 6px;color:var(--mut);line-height:1.7">${msg}</div><div class="sbtns"><button class="btn ghost" data-act="sheetx">إلغاء</button><button class="btn ${red?'red':''}" data-act="${esc(okAct)}">${okLabel}</button></div>`);
 }
+/* ---------- سنة جديدة ---------- */
+function newYearSheet(){
+  const Y=Math.max(...allYears())+1, src=S.year, list=S.classes.filter(c=>clsYear(c)===src);
+  S._ny=Y; S._nySrc=src;
+  const rows=list.map(c=>{ const p=parseCls(c); if(!p) return ''; return `<div style="padding:4px 14px">📘 فصل \u2066${p.s}/${p.g}\u2069 ← ${p.g>=6?'🎓 بيتخرج':`فصل \u2066${p.s}/${p.g+1}\u2069`}</div>`; }).join('');
+  openSheet(`📅 سنة جديدة ${yearLabel(Y)}`,
+    `<div style="padding:2px 14px 8px;color:var(--mut)">ترحيل الطلاب من ${yearLabel(src)} للصف اللي بعده بنفس الأسماء (أولاد وبنات)، من غير درجات:</div>${rows||'<div style="padding:4px 14px">مفيش فصول في السنة دي</div>'}
+     <div class="sbtns"><button class="btn ghost" data-act="sheetx">إلغاء</button><button class="btn ghost" data-act="ny_empty">📄 سنة فاضية</button><button class="btn" data-act="ny_promote" ${list.length?'':'disabled'}>🎓 ترحيل</button></div>`);
+}
+async function newYear(kind, el){
+  const Y=S._ny, src=S._nySrc;
+  const ys=LS.get('years',[]); if(!ys.includes(Y)) ys.push(Y); LS.set('years',ys);
+  if(kind==='ny_empty'){ closeSheet(); S.year=Y; LS.set('year',Y); S.cls=''; renderHome(); renderCls(); toast(`📅 سنة ${yearLabel(Y)} جاهزة — ضيف الفصول`); return; }
+  el.disabled=true;
+  const list=S.classes.filter(c=>clsYear(c)===src); let ok=0, grad=0; const errs=[];
+  for(const c of list){
+    const p=parseCls(c); if(!p) continue;
+    if(p.g>=6){ grad++; continue; }
+    el.textContent=`⏳ فصل ${p.s}/${p.g+1}…`;
+    try{
+      const d=await classData(c);
+      const j=await api('addClass',{name:`${Y} ${p.g+1}/${p.s}`, names:d.names});
+      const gd=d.gender||{}, boys=d.names.filter(n=>gd[n]==='b'), girls=d.names.filter(n=>gd[n]==='g');
+      if(boys.length) await api('setGender',{cls:j.cls,names:boys,g:'b'});
+      if(girls.length) await api('setGender',{cls:j.cls,names:girls,g:'g'});
+      ok++;
+    }catch(er){ errs.push(`${p.s}/${p.g+1}: ${er.message}`); }
+  }
+  closeSheet(); S.year=Y; LS.set('year',Y); S.cls='';
+  await loadClasses();
+  toast(`🎓 اتعمل ${ok} فصل في ${yearLabel(Y)}` + (grad?` • ${grad} فصل سادس اتخرج`:'') + (errs.length?` • ⚠️ ${errs.join('، ')}`:''), !!errs.length);
+}
 async function selAction(act, el){
+  if(act==='ny_promote'||act==='ny_empty') return newYear(act, el);
   const pend = ORD.cls===S.cls && ORD.names;
   const need = ()=>{ if(!S.sel.size){ toast('حدّد طلاب الأول',true); return false; } return true; };
   const noPend = ()=>{ if(pend){ toast('احفظ الترتيب الأول أو الغيه',true); return false; } return true; };
@@ -900,7 +944,7 @@ async function selAction(act, el){
     }
     case 'move': {
       if(!need()||!noPend()) return;
-      const others=S.classes.filter(c=>c!==S.cls);
+      const others=yearClasses().filter(c=>c!==S.cls);
       if(!others.length) return toast('مفيش فصل تاني — اعمل فصل جديد الأول',true);
       openSheet(`🔀 نقل ${S.sel.size} طالب لـ`, others.map(c=>sitem('mvc:'+c,'📘','فصل '+dispName(c))).join('') + `<div class="mut" style="padding:6px 14px">بيتنقلوا بدرجاتهم، واللي اسمه موجود في الفصل التاني مش بيتكرر</div>`);
       return;
@@ -1034,6 +1078,11 @@ $('#clsChips').onclick = e=>{
   openClass(c.dataset.c);
 };
 $('#bHome').onclick = goHome;
+$('#yearChips').addEventListener('click', e=>{
+  const c=e.target.closest('[data-year]'); if(!c) return;
+  if(c.dataset.year==='+'){ newYearSheet(); return; }
+  S.year=+c.dataset.year; LS.set('year',S.year); S.cls=yearClasses()[0]||''; renderHome(); renderCls();
+});
 $('#cgrid').addEventListener('click', async e=>{
   const t=e.target;
   if(t.closest('#homeAdd')){ openAddCls(); scrollTo(0,0); return; }
@@ -1045,7 +1094,7 @@ $('#cgrid').addEventListener('click', async e=>{
   if(rn){
     const c=rn.dataset.renC, card=rn.closest('.ccard');
     if(!rn.dataset.save){ const p=parseCls(c)||{g:3,s:1}; card.dataset.g=p.g; card.dataset.s=p.s; card.querySelector('.cn').innerHTML=cpickHTML(p.g,p.s); card.querySelector('.cm').textContent='اختار الصف والفصل'; rn.textContent='💾 حفظ'; rn.dataset.save=1; return; }
-    const nn=card.dataset.g+'/'+card.dataset.s;
+    const nn=yearPrefix(clsYear(c))+card.dataset.g+'/'+card.dataset.s;
     rn.disabled=true;
     try{ const j=await api('renameClass',{cls:c,name:nn}); const old=LS.get('d3_'+c,null); if(old){ LS.set('d3_'+j.cls,old); localStorage.removeItem('d3_'+c); } S.q.forEach(x=>{ if(x.cls===c) x.cls=j.cls; }); LS.set('q',S.q); if(S.cls===c) S.cls=j.cls; await loadClasses(); toast('✅ اتعدّل اسم الفصل'); }
     catch(er){ toast(er.message,true); rn.disabled=false; }
@@ -1237,7 +1286,7 @@ $('#newClsPick').addEventListener('click', e=>{
 $('#addClsClose').onclick = ()=>$('#addClsCard').classList.add('hide');
 $('#seed33').onclick = ()=>{ NEWCLS.g=3; NEWCLS.s=2; drawNewCls(); $('#newClsNames').value=SEED33; toast('راجع الأسماء قبل الإنشاء'); };
 $('#addClsGo').onclick = async ()=>{
-  const name=$('#newCls').value.trim(); const names=$('#newClsNames').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const name=yearPrefix(S.year)+$('#newCls').value.trim(); const names=$('#newClsNames').value.split('\n').map(s=>s.trim()).filter(Boolean);
   if(!name) return toast('اكتب اسم الفصل', true);
   const b=$('#addClsGo'); b.disabled=true;
   try{ const j=await api('addClass',{name,names}); S.cls=j.cls; LS.set('cls',S.cls); $('#addClsCard').classList.add('hide'); $('#newCls').value=''; $('#newClsNames').value=''; await loadClasses(); openClass(j.cls); toast('✅ اتعمل فصل '+name); }
