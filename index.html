@@ -72,7 +72,9 @@ main{padding:12px 16px;max-width:760px;margin:auto;padding-bottom:110px}
 .gbar{display:flex;gap:6px;margin-bottom:10px}
 .gbar .chip{flex:1;text-align:center;padding:9px 4px}
 .gi{font-size:13px;margin-inline-end:4px}
-.selbar{position:sticky;bottom:84px;z-index:15;background:#101a13;border:1px solid var(--acc);border-radius:14px;padding:8px;margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
+.selmini{position:sticky;bottom:84px;z-index:16;display:flex;gap:8px;align-items:center;background:#101a13;border:1px solid var(--acc);border-radius:14px;padding:8px 10px;margin-top:10px}
+.selmini b{flex:1}
+.selbar{background:#101a13;border:1px solid var(--acc);border-radius:14px;padding:8px;margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
 .selbar .btn{flex:1;min-width:30%;padding:10px 6px;font-size:14px}
 .selchk{width:22px;height:22px;accent-color:#a3e635;flex:none}
 .mvbox{background:var(--card2);border:1px solid var(--acc);border-radius:12px;padding:10px;margin-top:8px}
@@ -248,7 +250,7 @@ th.nm{z-index:3;background:var(--card2)}
 <div id="printArea"></div>
 <div class="pk hide" id="pk">
   <div class="pkbox">
-    <div class="pkhead"><b id="pkT"></b></div>
+    <div class="pkhead"><button class="ib" id="pkX" title="إلغاء" style="font-size:18px">✖</button><b id="pkT"></b><span style="width:40px"></span></div>
     <div class="wheelw"><div class="wheel" id="wheel"></div><div class="band"></div></div>
     <div class="pkbtns">
       <button class="btn" id="pkNext">الخانة الجاية ‹</button>
@@ -258,7 +260,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 27;
+const APP_V = 28;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;
@@ -423,7 +425,7 @@ function parseCls(c){ const m=String(c||'').match(/^\s*(\d+)\s*[\/-]\s*(\d+)\s*$
 function clsLabel(c){ const p=parseCls(c); return p ? `الصف ${GRADES[p.g]||p.g} • فصل ${p.s}` : ''; }
 function cpickHTML(g,s){ return `<div class="cpick"><div class="cell" data-cg="1"><small>الصف</small><div class="v">${GRADES[g]||g}</div></div><div class="cell" data-cs="1"><small>الفصل</small><div class="v">${s}</div></div><div class="prev">\u2066${s}/${g}\u2069</div></div>`; }
 function genPicker(title, vals, labels, cur, onSet){
-  PK={mode:'gen', vals, onSet, i:null, n:-1};
+  PK={mode:'gen', vals, onSet, i:null, n:-1, orig:cur};
   $('#pkT').textContent=title;
   $('#wheel').innerHTML='<div class="pad"></div>'+vals.map((v,n)=>`<div data-n="${n}">${labels[n]}</div>`).join('')+'<div class="pad"></div>';
   $('#pk').classList.remove('hide');
@@ -795,7 +797,7 @@ function bulkStep(step){
 function mvBox(){
   const others=S.classes.filter(c=>c!==S.cls);
   if(!others.length) return `<div class="mvbox">مفيش فصل تاني — اعمل فصل جديد الأول</div>`;
-  return `<div class="mvbox"><b>🔀 نقل ${S.mvFor.length===1?esc(S.mvFor[0]):S.mvFor.length+' طالب'} لـ:</b><div class="row" style="margin-top:8px">${others.map(c=>`<button class="btn ghost" data-mvto-c="${esc(c)}">فصل ${esc(dispName(c))}</button>`).join('')}</div><div class="mut" style="margin-top:6px">بيتنقل بدرجاته، والاسم الموجود في الفصل التاني مش بيتكرر</div></div>`;
+  return `<div class="mvbox"><b style="display:flex;justify-content:space-between;align-items:center">🔀 نقل ${S.mvFor.length===1?esc(S.mvFor[0]):S.mvFor.length+' طالب'} لـ:<button class="btn ghost sm" id="mvX" style="flex:none;min-width:0;padding:4px 10px">✖</button></b><div class="row" style="margin-top:8px">${others.map(c=>`<button class="btn ghost" data-mvto-c="${esc(c)}">فصل ${esc(dispName(c))}</button>`).join('')}</div><div class="mut" style="margin-top:6px">بيتنقل بدرجاته، والاسم الموجود في الفصل التاني مش بيتكرر</div></div>`;
 }
 async function doMove(to, names, btn){
   if(!btn.dataset.ok){ btn.dataset.ok=1; btn.textContent='اضغط تاني للتأكيد ✔'; setTimeout(()=>{ if(btn.isConnected){ delete btn.dataset.ok; btn.textContent='فصل '+dispName(to); } },3000); return; }
@@ -815,8 +817,16 @@ async function doGender(names, g){
 }
 function ordStart(){ if(ORD.cls!==S.cls || !ORD.names){ ORD.cls=S.cls; ORD.names=S.d.names.slice(); ORD.late=(S.d.late||[]).slice(); } }
 const arCmp=(a,b)=>AR_NORM(a).localeCompare(AR_NORM(b),'ar');
-function ordMove(from,to){ ordStart(); to=Math.max(0,Math.min(ORD.names.length-1,to)); const [x]=ORD.names.splice(from,1); ORD.names.splice(to,0,x); ORD.sel=to; renderStu();
+function ordMove(from,to){ ordStart(); to=Math.max(0,Math.min(ORD.names.length-1,to)); const [x]=ORD.names.splice(from,1); ORD.names.splice(to,0,x); renderStu();
   setTimeout(()=>{ const el=document.querySelector(`#stuBody .sitem[data-i="${to}"]`); if(el) el.scrollIntoView({block:'center',behavior:'smooth'}); },30); }
+function ordSel(kind){
+  ordStart(); const sel=ORD.names.filter(n=>S.sel.has(n)); if(!sel.length) return toast('حدّد طلاب الأول',true);
+  if(kind==='az'){ const pos=ORD.names.map((n,i)=>S.sel.has(n)?i:-1).filter(i=>i>=0); const sorted=sel.slice().sort(arCmp); pos.forEach((p,k)=>ORD.names[p]=sorted[k]); }
+  else if(kind==='top'){ ORD.names = sel.concat(ORD.names.filter(n=>!S.sel.has(n))); }
+  else if(kind==='end'){ ORD.names = ORD.names.filter(n=>!S.sel.has(n)).concat(sel); }
+  else if(kind==='up'||kind==='down'){ const i=ORD.names.indexOf(sel[0]); ordMove(i, i+(kind==='up'?-1:1)); return; }
+  renderStu(); toast('راجع الترتيب ودوس 💾 حفظ الترتيب');
+}
 function renderStu(){
   const d=S.d;
   let h = `<details class="acc" ${OCR.imgs.some(Boolean)||OCR.res?'open':''}><summary>📸 أسماء من الكاميرا</summary><div class="accb">${ocrCard()}</div></details>`;
@@ -824,26 +834,25 @@ function renderStu(){
   const P=ORD.cls===S.cls && ORD.names ? ORD : null;
   const names=P?P.names:d.names, late=new Set(P?P.late:(d.late||[]));
   const unk = d.names.filter(n=>!gOf(n)).length;
+  const one = S.sel.size===1 ? [...S.sel][0] : null;
   h += `<div class="card"><h3>👥 الطلاب (${names.length})</h3>${gBar()}
-    ${unk && !P ? `<button class="btn ghost sm" id="selGo" style="width:100%;margin-bottom:8px">👦👧 ${unk} طالب من غير تحديد — حدّد الأولاد والبنات</button>`:''}
-    <div class="row" style="margin-bottom:6px">${P?'':`<button class="btn ghost sm" id="selToggle">${S.selMode?'✖ قفل التحديد':'☑️ تحديد'}</button>`}<button class="btn ghost sm" id="sortA">🔤 أبجدي (المتأخرين في الآخر)</button><button class="btn ghost sm" id="sortAll">🔤 أبجدي للكل</button></div>
-    <div class="mut" style="margin-bottom:6px">👆 اضغط مطول على أي اسم: تعديل، تحريك، أو حذف</div>`
-    + names.map((n,i)=>(S.gf!=='all' && gOf(n)!==S.gf) ? '' : `<div class="sitem ${ORD.sel===i?'sel':''}" data-i="${i}"><div class="sline">${S.selMode&&!P?`<input type="checkbox" class="selchk" data-sel="${esc(n)}" ${S.sel.has(n)?'checked':''}>`:''}<span class="mut">${i+1}</span><span class="nm" data-lp="${i}">${gIcon(n)}${esc(n)}${late.has(n)?'<span class="late">🕓 متأخر</span>':''}</span></div>${ORD.sel===i?`<div class="smenu">
-        ${P?'':`<button class="btn ghost" data-ren="${i}">✏️ تعديل</button>`}
-        <button class="btn ghost" data-mv="-1">⬆️ لفوق</button><button class="btn ghost" data-mv="1">⬇️ لتحت</button>
-        <button class="btn ghost" data-mvto="1">⏫ الأول</button><button class="btn ghost" data-mvto="${names.length}">⏬ الأخير</button>
-        <span class="row" style="gap:4px">🔢 <input type="number" min="1" max="${names.length}" id="mvNum" placeholder="رقم" style="width:64px;padding:6px"><button class="btn ghost" id="mvGo">نقل</button></span>
-        <button class="btn ghost" data-late="1">${late.has(n)?'🕓 شيل علامة متأخر':'🕓 علّمه متأخر'}</button>
-        ${P?'':`<button class="btn ghost" data-sel1="1">☑️ تحديد متعدد</button><button class="btn ghost" data-g1="b">👦 ولد</button><button class="btn ghost" data-g1="g">👧 بنت</button><button class="btn ghost" data-mv1="1">🔀 نقل لفصل</button>`}
-        ${P?'':`<button class="btn red" data-del="${i}">🗑️ حذف</button>`}
-        <button class="btn ghost" data-close="1">✖</button></div>${S.mvFor && S.mvFor.length===1 && S.mvFor[0]===n ? mvBox() : ''}`:''}</div>`).join('')
-    + (P?`<div class="ordbar"><button class="btn" id="ordSave">💾 حفظ الترتيب</button><button class="btn ghost" id="ordCancel">إلغاء</button></div>`:'')
-    + (S.selMode && !P ? `<div class="selbar"><b style="width:100%;font-size:14px">☑️ محدد ${S.sel.size}</b>
+    ${unk && !P && !S.selMode ? `<button class="btn ghost sm" id="selGo" style="width:100%;margin-bottom:8px">👦👧 ${unk} طالب من غير تحديد — حدّد الأولاد والبنات</button>`:''}
+    ${S.selMode?'':`<div class="row" style="margin-bottom:6px"><button class="btn ghost sm" id="sortA">🔤 أبجدي (المتأخرين في الآخر)</button><button class="btn ghost sm" id="sortAll">🔤 أبجدي للكل</button></div>
+    <div class="mut" style="margin-bottom:6px">👆 اضغط مطول على أي اسم عشان تبدأ التحديد</div>`}`
+    + names.map((n,i)=>(S.gf!=='all' && gOf(n)!==S.gf) ? '' : `<div class="sitem ${S.sel.has(n)?'sel':''}" data-i="${i}" data-name="${esc(n)}"><div class="sline">${S.selMode?`<input type="checkbox" class="selchk" data-sel="${esc(n)}" ${S.sel.has(n)?'checked':''}>`:''}<span class="mut">${i+1}</span><span class="nm" data-lp="${i}">${gIcon(n)}${esc(n)}${late.has(n)?'<span class="late">🕓 متأخر</span>':''}</span></div></div>`).join('')
+    + (P && !S.selMode ? `<div class="ordbar"><button class="btn" id="ordSave">💾 حفظ الترتيب</button><button class="btn ghost" id="ordCancel">إلغاء</button></div>`:'')
+    + (S.selMode ? `<div class="selmini"><b>☑️ محدد ${S.sel.size}</b><button class="btn sm" id="selJump">⚙️ الإجراءات ⬇</button><button class="btn ghost sm" id="selExit2">✖</button></div><div class="selbar" id="selbar">
+        <b style="width:100%;font-size:14px;display:flex;justify-content:space-between">☑️ محدد ${S.sel.size}<button class="btn ghost sm" id="selExit" style="flex:none;min-width:0;padding:4px 10px">✖ خروج</button></b>
+        ${P?`<button class="btn" id="ordSave">💾 حفظ الترتيب</button><button class="btn ghost" id="ordCancel">↩️ إلغاء الترتيب</button>`:''}
         <button class="btn ghost" id="selAll">☑️ كل المعروضين</button><button class="btn ghost" id="selNone">⬜ مسح التحديد</button>
-        <button class="btn ghost" data-gs="b">👦 أولاد</button><button class="btn ghost" data-gs="g">👧 بنات</button>
-        <button class="btn ghost" id="selLate">🕓 متأخر / لأ</button><button class="btn ghost" id="selGrade">✍️ درجة للكل</button>
-        <button class="btn" id="selMove">🔀 نقل لفصل</button><button class="btn red" id="selDel">🗑️ حذف</button>
-        ${S.mvFor && S.mvFor.length>1 ? '<div style="width:100%">'+mvBox()+'</div>' : ''}</div>` : '')
+        <div class="mut" style="width:100%">🏷️ تصنيف</div>
+        <button class="btn ghost" data-gs="b">👦 ولد</button><button class="btn ghost" data-gs="g">👧 بنت</button><button class="btn ghost" id="selLate">🕓 متأخر / لأ</button>
+        <div class="mut" style="width:100%">🔤 ترتيب</div>
+        <button class="btn ghost" data-ss="az">🔤 أبجدي للمحددين</button><button class="btn ghost" data-ss="top">⏫ لأول القايمة</button><button class="btn ghost" data-ss="end">⏬ لآخر القايمة</button>
+        ${one?`<button class="btn ghost" data-ss="up">⬆️ لفوق</button><button class="btn ghost" data-ss="down">⬇️ لتحت</button>${P?'':`<button class="btn ghost" data-ren="${d.names.indexOf(one)}">✏️ تعديل الاسم</button>`}`:''}
+        <div class="mut" style="width:100%">⚙️ إجراءات</div>
+        <button class="btn ghost" id="selGrade">✍️ درجة للكل</button><button class="btn" id="selMove">🔀 نقل لفصل</button><button class="btn red" id="selDel">🗑️ حذف</button>
+        ${S.mvFor ? '<div style="width:100%">'+mvBox()+'</div>' : ''}</div>` : '')
     + `</div>`;
   if(d.weeks.length) h += `<details class="acc"><summary>📅 الأسابيع (${d.weeks.length})</summary><div class="accb">` + d.weeks.map((w,k)=>`<div class="sline"><span class="nm">${esc(w)}</span><button class="btn red sm" data-delwk="${k}">🗑️</button></div>`).join('') + `</div></details>`;
   $('#stuBody').innerHTML = h;
@@ -857,13 +866,14 @@ function openPicker(i, idx, mode){
   for(let v=0; v<=max+1e-9; v+=0.5) vals.push(r1(v));
   PK = {i, idx, vals, mode};
   const b = mode==='term' ? trm(i) : blk(i,S.wk);
+  PK.orig = b[idx];
   $('#pkT').textContent = mode==='term' ? (idx?'الشهر التاني /15':'الشهر الأول /15') : LABEL[idx];
   $('#wheel').innerHTML = '<div class="pad"></div>' + vals.map((v,n)=>`<div data-n="${n}" ${v===ABS?'style="color:#f87171"':''}>${v===''?'—':v}</div>`).join('') + '<div class="pad"></div>';
   $('#pk').classList.remove('hide');
   const E = vals.indexOf('');
   let n = vals.findIndex(v=>v===b[idx] || (num(v)!=null && num(b[idx])!=null && +v===+b[idx])); if(n<0) n = (b[idx]==='' && idx===9 && mode!=='term') ? vals.length-1 : E;
   PK.n = -1;
-  const auto5 = mode==='wk' && b[idx]==='' && idx===9;
+  const auto5 = mode==='wk' && b[idx]==='' && idx===9; // orig فاضي، فالإلغاء بيرجّعه فاضي
   if(mode==='term' && b[idx]==='') n=E;
   requestAnimationFrame(()=>{ $('#wheel').scrollTop = n*IH; highlight(n); if(auto5) applyN(n); });
   S.cur = idx; mode==='term' ? refreshT(i) : refreshCard(i);
@@ -887,6 +897,23 @@ $('#wheel').addEventListener('click', e=>{ const el=e.target.closest('div[data-n
 function closePicker(){ if(PK){ applyN(Math.round($('#wheel').scrollTop/IH)); }
   if(PK && PK.mode==='gen' && S._bstep){ const step=S._bstep; S._bstep=null; $('#pk').classList.add('hide'); PK=null; setTimeout(()=>bulkStep(step),150); return; } $('#pk').classList.add('hide'); const i=PK&&PK.i, md=PK&&PK.mode; PK=null; S.cur=-1; if(i!=null) (md==='term'?refreshT(i):refreshCard(i)); }
 $('#pkOk').onclick = closePicker;
+// ✖ إلغاء: يقفل من غير ما يغيّر حاجة (بيرجّع القيمة اللي كانت)
+function cancelPicker(){
+  if(!PK) return;
+  clearTimeout(wT);
+  const P0=PK;
+  if(P0.mode==='gen'){ S._bstep=null; try{ P0.onSet(P0.orig); }catch(_){} }
+  else {
+    const cur = P0.mode==='term' ? trm(P0.i)[P0.idx] : blk(P0.i,S.wk)[P0.idx];
+    if(cur!==P0.orig){
+      if(P0.mode==='term'){ const t=trm(P0.i); t[P0.idx]=P0.orig; termCalc(P0.i); cacheD(); scheduleTerm(P0.i); }
+      else { const b=blk(P0.i,S.wk); b[P0.idx]=P0.orig; setBlk(P0.i,S.wk,calc(b)); cacheD(); scheduleSave(P0.i); }
+    }
+  }
+  $('#pk').classList.add('hide'); PK=null; S.cur=-1;
+  if(P0.i!=null) (P0.mode==='term'?refreshT(P0.i):refreshCard(P0.i));
+}
+$('#pkX').onclick = cancelPicker;
 $('#pk').addEventListener('click', e=>{ if(e.target.id==='pk') closePicker(); });
 $('#pkNext').onclick = ()=>{
   if(!PK) return;
@@ -982,7 +1009,9 @@ $('#stuBody').addEventListener('change', async e=>{
   if(t.dataset.oon!=null && OCR.res){ OCR.res.items[+t.dataset.oon].on=t.checked; const b=$('#ocrAdd'); if(b) b.textContent=`➕ إضافة المحدد (${OCR.res.items.filter(x=>x.on).length})`; }
 });
 let lpT=null;
-function openLP(el){ const i=+el.dataset.lp; ORD.sel = ORD.sel===i ? -1 : i; renderStu(); if(navigator.vibrate) try{ navigator.vibrate(30); }catch(_){} }
+let lpJust=0;
+function openLP(el){ lpJust=Date.now(); const it=el.closest('.sitem'), n=it.dataset.name; S.selMode=true; S.mvFor=null; if(S.sel.has(n)) S.sel.delete(n); else S.sel.add(n); renderStu(); if(navigator.vibrate) try{ navigator.vibrate(30); }catch(_){} }
+function selToggleRow(it){ const n=it.dataset.name; const on=!S.sel.has(n); on?S.sel.add(n):S.sel.delete(n); renderStu(); }
 $('#stuBody').addEventListener('pointerdown', e=>{ const el=e.target.closest('[data-lp]'); if(!el) return; clearTimeout(lpT); lpT=setTimeout(()=>{ lpT=null; openLP(el); }, 500); });
 ['pointerup','pointercancel','pointerleave'].forEach(ev=>$('#stuBody').addEventListener(ev, ()=>{ clearTimeout(lpT); }));
 $('#stuBody').addEventListener('pointermove', e=>{ if(lpT && (Math.abs(e.movementX)+Math.abs(e.movementY))>6){ clearTimeout(lpT); lpT=null; } });
@@ -1020,10 +1049,19 @@ $('#stuBody').addEventListener('click', async e=>{
     else { const reg=ORD.names.filter(n=>!late.has(n)).sort(arCmp), lt=ORD.names.filter(n=>late.has(n)); ORD.names=reg.concat(lt); }
     ORD.sel=-1; renderStu(); toast('راجع الترتيب ودوس 💾 حفظ الترتيب'); return;
   }
+  if(t.id==='selJump'){ $('#selbar').scrollIntoView({block:'end',behavior:'smooth'}); return; }
+  if(t.id==='selExit2'){ S.selMode=false; S.sel=new Set(); S.mvFor=null; renderStu(); return; }
+  if(t.id==='mvX'){ S.mvFor=null; renderStu(); return; }
+  if(t.id==='selExit'){ S.selMode=false; S.sel=new Set(); S.mvFor=null; renderStu(); return; }
+  if(t.dataset.ss){ ordSel(t.dataset.ss); return; }
+  const pend = ORD.cls===S.cls && ORD.names;
+  if(pend && (t.dataset.gs || ['selLate','selGrade','selMove','selDel'].includes(t.id))) return toast('احفظ الترتيب الأول أو الغيه',true);
+  if(Date.now()-lpJust<700 && t.closest('.sitem')) return; // الضغط المطول نفسه مايعكسش التحديد
+  if(S.selMode && !t.closest('button,input,.selbar,.mvbox') && t.closest('.sitem')){ selToggleRow(t.closest('.sitem')); return; }
   if(t.id==='selToggle' || t.id==='selGo'){ S.selMode = t.id==='selGo' ? true : !S.selMode; S.sel=new Set(); S.mvFor=null; ORD.sel=-1; renderStu(); return; }
   if(t.id==='selAll'){ S.d.names.forEach(n=>{ if(S.gf==='all'||gOf(n)===S.gf) S.sel.add(n); }); renderStu(); return; }
   if(t.id==='selNone'){ S.sel=new Set(); S.mvFor=null; renderStu(); return; }
-  if(t.dataset.gs){ if(!S.sel.size) return toast('حدّد طلاب الأول',true); await doGender([...S.sel], t.dataset.gs); S.sel=new Set(); renderStu(); return; }
+  if(t.dataset.gs){ if(!S.sel.size) return toast('حدّد طلاب الأول',true); await doGender([...S.sel], t.dataset.gs); return; } // التحديد بيفضل عشان تكمّل عليهم
   if(t.id==='selMove'){ if(!S.sel.size) return toast('حدّد طلاب الأول',true); S.mvFor=[...S.sel]; renderStu(); return; }
   if(t.dataset.mvtoC){ await doMove(t.dataset.mvtoC, S.mvFor||[], t); return; }
   const it=t.closest('.sitem'); const si=it?+it.dataset.i:-1;
@@ -1063,6 +1101,7 @@ $('#stuBody').addEventListener('click', async e=>{
   if(t.id==='mvGo'){ const v=+$('#mvNum').value; if(v>=1) ordMove(si, v-1); return; }
   if(t.dataset.late){ ordStart(); const n=ORD.names[si]; ORD.late = ORD.late.includes(n) ? ORD.late.filter(x=>x!==n) : ORD.late.concat([n]); renderStu(); return; }
   if(t.id==='ordCancel'){ ORD.names=null; ORD.sel=-1; renderStu(); return; }
+
   if(t.id==='ordSave'){
     t.disabled=true; t.textContent='⏳ بيحفظ…';
     try{
@@ -1073,7 +1112,7 @@ $('#stuBody').addEventListener('click', async e=>{
     return;
   }
   if(t.dataset.ren!=null){
-    const i=+t.dataset.ren, line=t.closest('.sitem')||t.closest('.sline');
+    const i=+t.dataset.ren, line=t.closest('.sitem')||t.closest('.sline')||document.querySelector(`#stuBody .sitem[data-i="${i}"]`);
     if(t.dataset.save){ const nn=line.querySelector('input').value.trim(); if(!nn) return; t.disabled=true; try{ await api('renameStudent',{cls:S.cls,row:i,old:S.d.names[i],name:nn}); await loadClass(); toast('✅ اتعدّل'); }catch(er){ toast(er.message,true); t.disabled=false; } return; }
     line.querySelector('.nm').innerHTML=`<input type="text" value="${esc(S.d.names[i])}">`; t.textContent='💾'; t.dataset.save=1; line.querySelector('input').focus(); return;
   }
@@ -1162,7 +1201,7 @@ if('serviceWorker' in navigator){
 }
 // زرار الرجوع في الموبايل
 window.appBack = function(){
-  if(!$('#pk').classList.contains('hide')){ closePicker(); return true; }
+  if(!$('#pk').classList.contains('hide')){ cancelPicker(); return true; }
   if(ORD.sel>=0){ ORD.sel=-1; renderStu(); return true; }
   if(!$('#addClsCard').classList.contains('hide')){ $('#addClsCard').classList.add('hide'); return true; }
   if(!$('#setCard').classList.contains('hide')){ $('#setCard').classList.add('hide'); return true; }
