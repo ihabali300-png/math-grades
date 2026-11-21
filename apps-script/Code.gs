@@ -3,12 +3,15 @@
  * كل فصل = تاب لوحده. كل أسبوع = 12 عمود:
  * د1 ك حصة | د1 ك واجب | د2 ك حصة | د2 ك واجب | د3 ك حصة | د3 ك واجب |
  * متوسط ك حصة | متوسط ك واجب | تقييم أسبوعي | سلوك ومواظبة | المجموع | متوسط تراكمي
+ * وفي آخر الجدول 5 أعمدة لاختبارات التيرم:
+ * الشهر الأول /15 | الشهر الثاني /15 | متوسط الشهرين /15 | متوسط الأسابيع /25 | المجموع /40
  * المتوسطات والمجموع معادلات جوه الشيت (بتتحسب لوحدها).
  */
 const TOKEN = 'hana-math-2027';
 const W = 12, OLD_W = 11, HDR = 2, FIRST_COL = 3;
 const SUB = ['د1 ك حصة','د1 ك واجب','د2 ك حصة','د2 ك واجب','د3 ك حصة','د3 ك واجب','متوسط ك حصة','متوسط ك واجب','تقييم أسبوعي /10','سلوك ومواظبة /5','المجموع /25','متوسط تراكمي /25'];
 const CUM = 'متوسط تراكمي /25';
+const T = 5, TSUB = ['الشهر الأول /15','الشهر الثاني /15','متوسط الشهرين /15','متوسط الأسابيع /25','المجموع /40'];
 const COLORS = ['#e8f5e9','#e3f2fd'];
 
 function doGet() { return out({ ok: true, msg: 'grades api' }); }
@@ -38,10 +41,13 @@ function getSh(ss, name) {
   const sh = ss.getSheetByName(tabName(name));
   if (!sh || !isClass(sh)) throw new Error('الفصل مش موجود: ' + name);
   upgrade(sh);
+  if (!hasTerm(sh)) addTerm(sh);
   return sh;
 }
 function nStudents(sh) { return Math.max(0, sh.getLastRow() - HDR); }
-function nWeeks(sh) { return Math.max(0, Math.floor((sh.getLastColumn() - 2) / W)); }
+function hasTerm(sh) { return sh.getRange(HDR, sh.getLastColumn()).getDisplayValue() === TSUB[4]; }
+function nWeeks(sh) { return Math.max(0, Math.floor((sh.getLastColumn() - 2 - (hasTerm(sh) ? T : 0)) / W)); }
+function termCol(sh) { return startCol(nWeeks(sh)); }
 function startCol(k) { return FIRST_COL + k * W; }
 
 function setFormulas(sh, row, count, k) {
@@ -66,6 +72,27 @@ function rewriteCum(sh) {
     sh.getRange(HDR, startCol(i) + 11).setValue(CUM);
     if (n) sh.getRange(HDR + 1, startCol(i) + 11, n, 1).setFormulaR1C1(cumFormula(i));
   }
+  if (hasTerm(sh)) termFormulas(sh);
+}
+// معادلات التيرم: متوسط الأسابيع = آخر متوسط تراكمي
+function termFormulas(sh) {
+  const n = nStudents(sh), k = nWeeks(sh), s = startCol(k);
+  if (!n) return;
+  sh.getRange(HDR + 1, s + 2, n, 1).setFormulaR1C1('=IF(COUNT(RC[-2],RC[-1])=0,"",ROUND(AVERAGE(RC[-2],RC[-1]),1))');
+  if (k) sh.getRange(HDR + 1, s + 3, n, 1).setFormulaR1C1('=RC[-4]');
+  else sh.getRange(HDR + 1, s + 3, n, 1).setValue('');
+  sh.getRange(HDR + 1, s + 4, n, 1).setFormulaR1C1('=IF(COUNT(RC[-2],RC[-1])=0,"",ROUND(SUM(RC[-2],RC[-1]),1))');
+  sh.getRange(HDR + 1, s, n, T).setHorizontalAlignment('center');
+  sh.getRange(HDR + 1, s + 4, n, 1).setFontWeight('bold').setFontColor('#1a237e');
+}
+function addTerm(sh) {
+  const s = sh.getLastColumn() + 1;
+  if (sh.getMaxColumns() < s + T - 1) sh.insertColumnsAfter(sh.getMaxColumns(), s + T - 1 - sh.getMaxColumns());
+  sh.getRange(1, s, 1, T).merge().setValue('🏁 اختبارات التيرم').setFontWeight('bold').setHorizontalAlignment('center').setBackground('#9fa8da');
+  sh.getRange(HDR, s, 1, T).setValues([TSUB]).setFontWeight('bold').setWrap(true).setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground('#e8eaf6');
+  sh.getRange(HDR, s + 4).setBackground('#c5cae9');
+  for (let c = s; c < s + T; c++) sh.setColumnWidth(c, 70);
+  termFormulas(sh);
 }
 // ترقية الشيت القديم (11 عمود للأسبوع) للشكل الجديد (12 عمود)
 function upgrade(sh) {
@@ -137,13 +164,16 @@ const ACTIONS = {
     for (let i = 0; i < k; i++) weeks.push(sh.getRange(1, startCol(i)).getDisplayValue());
     const vals = (n && k) ? sh.getRange(HDR + 1, FIRST_COL, n, k * W).getValues()
       .map(r => r.map(v => (v === '' || v === null) ? '' : (typeof v === 'number' ? Math.round(v * 100) / 100 : v))) : names.map(() => []);
-    return { names, weeks, vals, url: ss.getUrl() + '#gid=' + sh.getSheetId() };
+    const term = n ? sh.getRange(HDR + 1, termCol(sh), n, T).getValues()
+      .map(r => r.map(v => (v === '' || v === null) ? '' : (typeof v === 'number' ? Math.round(v * 100) / 100 : v))) : [];
+    return { names, weeks, vals, term, url: ss.getUrl() + '#gid=' + sh.getSheetId() };
   },
 
   addWeek: (ss, b) => {
     const sh = getSh(ss, b.cls);
     const k = nWeeks(sh), s = startCol(k), n = nStudents(sh);
-    if (sh.getMaxColumns() < s + W - 1) sh.insertColumnsAfter(sh.getMaxColumns(), s + W - 1 - sh.getMaxColumns());
+    sh.insertColumnsBefore(s, W);
+    sh.getRange(1, s, Math.max(HDR + n, HDR), W).clear();
     const color = COLORS[k % 2];
     sh.getRange(1, s, 1, W).merge().setValue(String(b.label || ('الأسبوع ' + (k + 1))))
       .setFontWeight('bold').setHorizontalAlignment('center').setBackground('#a5d6a7');
@@ -182,6 +212,14 @@ const ACTIONS = {
     const v = (b.vals || []).map(x => (x === '' || x === null || x === undefined) ? '' : Number(x));
     sh.getRange(r, s, 1, 6).setValues([v.slice(0, 6)]);
     sh.getRange(r, s + 8, 1, 2).setValues([[v[6], v[7]]]);
+    return {};
+  },
+
+  saveTerm: (ss, b) => {
+    const sh = getSh(ss, b.cls);
+    const r = findRow(sh, Number(b.row), String(b.name));
+    const v = (b.vals || []).map(x => (x === '' || x === null || x === undefined) ? '' : Number(x));
+    sh.getRange(r, termCol(sh), 1, 2).setValues([[v[0], v[1]]]);
     return {};
   },
 

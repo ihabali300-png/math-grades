@@ -25,8 +25,8 @@ header{position:sticky;top:0;z-index:20;background:rgba(11,18,13,.96);backdrop-f
 .chip.on{background:var(--acc);color:#0b120d;border-color:var(--acc);font-weight:700}
 .chip.add{border-style:dashed;color:var(--acc)}
 main{padding:12px;max-width:760px;margin:auto;padding-bottom:90px}
-.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-.tile{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 4px;text-align:center;font-size:14px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 2px;text-align:center;font-size:13px}
 .tile span{display:block;font-size:26px;margin-bottom:4px}
 .tile.on{border-color:var(--acc);background:#1b2a12;color:var(--acc);font-weight:700}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:10px}
@@ -130,6 +130,7 @@ th.nm{z-index:3;background:var(--card2)}
 
   <div class="tiles" id="tiles">
     <button class="tile on" data-v="rasd"><span>📝</span>رصد الدرجات</button>
+    <button class="tile" data-v="term"><span>🏁</span>اختبارات التيرم</button>
     <button class="tile" data-v="res"><span>📊</span>النتائج</button>
     <button class="tile" data-v="stu"><span>👥</span>الطلاب</button>
   </div>
@@ -147,6 +148,7 @@ th.nm{z-index:3;background:var(--card2)}
     <div id="rasdBody"></div>
   </section>
 
+  <section id="v-term" class="hide"><div id="termBody"></div></section>
   <section id="v-res" class="hide"><div id="resBody"></div></section>
   <section id="v-stu" class="hide"><div id="stuBody"></div></section>
 </main>
@@ -163,7 +165,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 3;
+const APP_V = 4;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwuEK8gV3b0rtd3eVTCpWLyOPNifvMuNz9nJ--hMvMnXUhqIY6MpU7py56699_bW-l1/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;                       // أعمدة الأسبوع في الشيت
@@ -202,7 +204,7 @@ const LS = {get:(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSO
 
 const S = {
   api: LS.get('api', DEFAULT_API), classes: LS.get('classes', []), cls: LS.get('cls', ''),
-  d: null, wk: 0, open: -1, cur: -1, view: 'rasd', q: LS.get('q', []), search: '', sending: false
+  d: null, wk: 0, open: -1, topen: -1, cur: -1, view: 'rasd', q: LS.get('q', []), search: '', sending: false
 };
 
 /* ---------- أدوات ---------- */
@@ -238,9 +240,20 @@ function setBlk(i, k, b){ const row=S.d.vals[i]; for(let j=0;j<W;j++) row[k*W+j]
 function cumRow(i){ // متوسط تراكمي لكل أسبوع
   const row=S.d.vals[i]; const t=[];
   for(let k=0;k<S.d.weeks.length;k++){ while(row.length<(k+1)*W) row.push(''); const v=num(row[k*W+10]); if(v!=null) t.push(v); row[k*W+11] = t.length ? r1(t.reduce((a,c)=>a+c,0)/t.length) : ''; }
+  termCalc(i);
+}
+function trm(i){ if(!S.d.term) S.d.term=[]; while(S.d.term.length<=i) S.d.term.push(['','','','','']); const t=S.d.term[i]; while(t.length<5) t.push(''); return t; }
+function termCalc(i){ // الشهرين من 15 + متوسط الأسابيع من 25 = 40
+  const t=trm(i);
+  const m=[t[0],t[1]].map(num).filter(x=>x!=null);
+  t[2] = m.length ? r1(m.reduce((a,c)=>a+c,0)/m.length) : '';
+  const nw=S.d.weeks.length; t[3] = nw ? (S.d.vals[i][(nw-1)*W+11] ?? '') : '';
+  const p=[t[2],t[3]].map(num).filter(x=>x!=null);
+  t[4] = p.length ? r1(p.reduce((a,c)=>a+c,0)) : '';
+  return t;
 }
 function filled(b){ return ORDER.filter(i=>b[i]!=='' && b[i]!=null).length; }
-function cacheD(){ LS.set('d2_'+S.cls, S.d); }
+function cacheD(){ LS.set('d3_'+S.cls, S.d); }
 
 /* ---------- الطابور (حفظ أوفلاين) ---------- */
 const timers = {};
@@ -251,17 +264,24 @@ function scheduleSave(i){
   timers[key] = setTimeout(()=>{
     const b=blk(i,k);
     const item={cls:S.cls, row:i, name:S.d.names[i], week:k, vals:ORDER.slice().sort((a,b)=>a-b).map(x=>b[x])};
-    S.q = S.q.filter(x=>!(x.cls===item.cls && x.row===item.row && x.week===item.week));
+    S.q = S.q.filter(x=>!(x.kind!=='term' && x.cls===item.cls && x.row===item.row && x.week===item.week));
     S.q.push(item); LS.set('q', S.q); flush();
   }, 700);
 }
-function markPending(i, on){ const el=document.querySelector(`.st[data-i="${i}"] .dot`); if(el) el.textContent = on ? '⏳' : '✓'; }
+function scheduleTerm(i){
+  const key=S.cls+'|t|'+i; clearTimeout(timers[key]); markPending(i,true);
+  timers[key]=setTimeout(()=>{
+    const t=trm(i), item={kind:'term', cls:S.cls, row:i, name:S.d.names[i], vals:[t[0],t[1]]};
+    S.q=S.q.filter(x=>!(x.kind==='term' && x.cls===item.cls && x.row===item.row)); S.q.push(item); LS.set('q',S.q); flush();
+  },700);
+}
+function markPending(i, on){ const el=document.querySelector(`#${S.view==='term'?'termBody':'rasdBody'} .st[data-i="${i}"] .dot`); if(el) el.textContent = on ? '⏳' : '✓'; }
 async function flush(){
   if(S.sending || !S.q.length) { qbar(); return; }
   S.sending = true; qbar();
   while(S.q.length){
     const it=S.q[0];
-    try{ await api('save', it); S.q.shift(); LS.set('q', S.q); if(it.cls===S.cls && it.week===S.wk) markPending(it.row,false); }
+    try{ await api(it.kind==='term'?'saveTerm':'save', it); S.q.shift(); LS.set('q', S.q); if(it.cls===S.cls && (it.kind==='term' ? S.view==='term' : it.week===S.wk)) markPending(it.row,false); }
     catch(e){ if(e.net) break; S.q.shift(); LS.set('q', S.q); toast('ما اتحفظش: '+e.message, true); }
   }
   S.sending = false; qbar();
@@ -278,14 +298,16 @@ async function loadClasses(){
   if(S.cls) await loadClass(); else { S.d=null; render(); if(S.api) openAddCls(true); }
 }
 async function loadClass(){
-  const cached = LS.get('d2_'+S.cls, null);
+  const cached = LS.get('d3_'+S.cls, null);
   if(cached){ S.d=cached; S.wk=Math.min(LS.get('wk_'+S.cls, cached.weeks.length-1), cached.weeks.length-1); if(S.wk<0)S.wk=0; render(); }
   else { S.d=null; $('#rasdBody').innerHTML='<div class="loading">⏳ بيحمّل…</div>'; }
   try{
     const j = await api('getClass', {cls:S.cls});
     // ضيف تعديلات الطابور اللي لسه ماتبعتتش
-    S.d = {names:j.names, weeks:j.weeks, vals:j.vals.map(r=>r.slice()), url:j.url};
-    S.q.filter(x=>x.cls===S.cls).forEach(x=>{ const i=S.d.names.indexOf(x.name); if(i<0) return; const b=blk(i,x.week); ORDER.slice().sort((a,c)=>a-c).forEach((idx,n)=>b[idx]=x.vals[n]); setBlk(i,x.week,calc(b)); });
+    S.d = {names:j.names, weeks:j.weeks, vals:j.vals.map(r=>r.slice()), term:(j.term||[]).map(r=>r.slice()), url:j.url};
+    S.q.filter(x=>x.cls===S.cls && x.kind==='term').forEach(x=>{ const i=S.d.names.indexOf(x.name); if(i<0) return; const t=trm(i); t[0]=x.vals[0]; t[1]=x.vals[1]; });
+    S.d.names.forEach((_,i)=>termCalc(i));
+    S.q.filter(x=>x.cls===S.cls && x.kind!=='term').forEach(x=>{ const i=S.d.names.indexOf(x.name); if(i<0) return; const b=blk(i,x.week); ORDER.slice().sort((a,c)=>a-c).forEach((idx,n)=>b[idx]=x.vals[n]); setBlk(i,x.week,calc(b)); });
     let wk = LS.get('wk_'+S.cls, j.weeks.length-1); if(wk>j.weeks.length-1) wk=j.weeks.length-1; if(wk<0) wk=0; S.wk=wk;
     cacheD(); render();
   }catch(e){ if(!S.d){ $('#rasdBody').innerHTML=`<div class="card">⚠️ ${esc(e.message)}</div>`; } else if(!e.net) toast(e.message,true); }
@@ -297,10 +319,10 @@ function renderCls(){
   $('#noApi').classList.toggle('hide', !!S.api);
 }
 function render(){
-  ['rasd','res','stu'].forEach(v=>$('#v-'+v).classList.toggle('hide', S.view!==v));
+  ['rasd','term','res','stu'].forEach(v=>$('#v-'+v).classList.toggle('hide', S.view!==v));
   document.querySelectorAll('.tile').forEach(t=>t.classList.toggle('on', t.dataset.v===S.view));
-  if(!S.d){ $('#rasdBody').innerHTML = S.cls ? '' : '<div class="card mut">مفيش فصول لسه — دوس «＋ فصل».</div>'; $('#wkChips').innerHTML=''; $('#resBody').innerHTML=''; $('#stuBody').innerHTML=''; return; }
-  if(S.view==='rasd') renderRasd(); else if(S.view==='res') renderRes(); else renderStu();
+  if(!S.d){ $('#rasdBody').innerHTML = S.cls ? '' : '<div class="card mut">مفيش فصول لسه — دوس «＋ فصل».</div>'; $('#wkChips').innerHTML=''; $('#resBody').innerHTML=''; $('#stuBody').innerHTML=''; $('#termBody').innerHTML=''; return; }
+  if(S.view==='rasd') renderRasd(); else if(S.view==='term') renderTerm(); else if(S.view==='res') renderRes(); else renderStu();
 }
 function renderWeeks(){
   $('#wkChips').innerHTML = S.d.weeks.map((w,k)=>`<button class="chip ${k===S.wk?'on':''}" data-k="${k}">${esc(w)}</button>`).join('') + `<button class="chip add" data-k="+">＋ أسبوع</button>`;
@@ -353,15 +375,47 @@ function openStu(i, cell){
   refreshCard(i);
   const el=document.querySelector(`.st[data-i="${i}"]`); if(el) el.scrollIntoView({block:'start', behavior:'smooth'});
 }
+function renderTerm(){
+  const B=$('#termBody');
+  if(!S.d.names.length){ B.innerHTML='<div class="card">👥 مفيش طلاب — ضيفهم من «الطلاب».</div>'; return; }
+  let h = `<div class="card mut">🏁 الشهر الأول والتاني من 15 — متوسطهم من 15 + متوسط الأسابيع من 25 = المجموع من 40</div>`;
+  h += `<input type="search" id="tsrch" placeholder="🔎 دوّر على اسم الطالب" style="margin-bottom:10px">`;
+  h += S.d.names.map((_,i)=>termCard(i)).join('');
+  B.innerHTML=h;
+}
+function termCard(i){
+  const t=termCalc(i), open=S.topen===i;
+  const f=[t[0],t[1]].filter(x=>x!=='').length;
+  const pending=S.q.some(x=>x.kind==='term' && x.cls===S.cls && x.row===i);
+  let h=`<div class="st ${open?'open':''}" data-i="${i}" data-name="${esc(S.d.names[i])}">
+    <div class="sth" data-ttap="${i}"><span class="n">${i+1}</span><span class="nm">${esc(S.d.names[i])}</span><span class="dot">${pending?'⏳':''}</span><span class="tot ${f===2?'full':f?'part':''}">${fmt(t[4])}<small style="color:var(--mut);font-weight:400">/40</small></span></div>`;
+  if(open){
+    const c=idx=>`<div class="cell ${t[idx]===''?'empty':''} ${S.cur===idx?'cur':''}" data-tcell="${idx}"><small>${idx?'الشهر التاني /15':'الشهر الأول /15'}</small><div class="v">${fmt(t[idx])}</div></div>`;
+    h+=`<div class="stb">
+      <div class="lab"><b>📝 اختبارات الشهور</b></div>
+      <div class="g3">${c(0)}${c(1)}<div class="cell ro"><small>متوسط الشهرين /15</small><div class="v">${fmt(t[2])}</div></div></div>
+      <div class="lab"><b>🧮 المجموع</b></div>
+      <div class="g3"><div class="cell ro"><small>متوسط الأسابيع /25</small><div class="v">${fmt(t[3])}</div></div><div class="cell ro"><small>متوسط الشهرين /15</small><div class="v">${fmt(t[2])}</div></div><div class="cell ro" style="border-color:var(--acc)"><small>المجموع /40</small><div class="v">${fmt(t[4])}</div></div></div>
+      <div class="nav"><button class="btn ghost" data-tprev="${i}">› السابق</button><button class="btn" data-tnext="${i}">التالي ‹</button></div>
+    </div>`;
+  }
+  return h+'</div>';
+}
+function refreshT(i){ const el=document.querySelector(`#termBody .st[data-i="${i}"]`); if(el) el.outerHTML=termCard(i); }
+function openT(i, cell){
+  const prev=S.topen; S.topen=i; S.cur=cell==null?-1:cell;
+  if(prev>=0 && prev!==i) refreshT(prev); refreshT(i);
+  const el=document.querySelector(`#termBody .st[data-i="${i}"]`); if(el) el.scrollIntoView({block:'start',behavior:'smooth'});
+}
 function renderRes(){
   const d=S.d;
-  if(!d.weeks.length){ $('#resBody').innerHTML='<div class="card">مفيش أسابيع لسه.</div>'; return; }
+  if(!d.weeks.length && !d.names.length){ $('#resBody').innerHTML='<div class="card">مفيش بيانات لسه.</div>'; return; }
   let h = `<div class="card"><div class="row" style="justify-content:space-between"><b>📊 مجموع كل أسبوع من 25</b>${d.url?`<a class="btn ghost sm" href="${esc(d.url)}" target="_blank" style="text-decoration:none">📄 افتح الشيت</a>`:''}</div></div>`;
-  h += `<div class="tbl"><table><thead><tr><th class="nm">الطالب</th>${d.weeks.map(w=>`<th>${esc(w)}</th>`).join('')}<th>المتوسط التراكمي</th></tr></thead><tbody>`;
+  h += `<div class="tbl"><table><thead><tr><th class="nm">الطالب</th>${d.weeks.map(w=>`<th>${esc(w)}</th>`).join('')}<th>المتوسط التراكمي</th><th>التيرم /40</th></tr></thead><tbody>`;
   d.names.forEach((n,i)=>{
     const t = d.weeks.map((_,k)=>blk(i,k)[10]);
-    const av = blk(i, d.weeks.length-1)[11];
-    h += `<tr><td class="nm">${i+1}. ${esc(n)}</td>${t.map(v=>`<td>${fmt(v)}</td>`).join('')}<td style="color:var(--acc);font-weight:700">${fmt(av)}</td></tr>`;
+    const av = d.weeks.length ? blk(i, d.weeks.length-1)[11] : '';
+    h += `<tr><td class="nm">${i+1}. ${esc(n)}</td>${t.map(v=>`<td>${fmt(v)}</td>`).join('')}<td style="color:var(--acc);font-weight:700">${fmt(av)}</td><td style="color:var(--yel);font-weight:700">${fmt(termCalc(i)[4])}</td></tr>`;
   });
   $('#resBody').innerHTML = h + '</tbody></table></div>';
 }
@@ -375,24 +429,28 @@ function renderStu(){
 
 /* ---------- عجلة الاختيار ---------- */
 let PK = null;
-function openPicker(i, idx){
-  const max=MAX(idx), vals=[''];
+function openPicker(i, idx, mode){
+  mode = mode || 'wk';
+  const max = mode==='term' ? 15 : MAX(idx), vals=[''];
   for(let v=0; v<=max+1e-9; v+=0.5) vals.push(r1(v));
-  PK = {i, idx, vals};
-  const b=blk(i,S.wk);
-  $('#pkT').textContent = LABEL[idx];
+  PK = {i, idx, vals, mode};
+  const b = mode==='term' ? trm(i) : blk(i,S.wk);
+  $('#pkT').textContent = mode==='term' ? (idx?'الشهر التاني /15':'الشهر الأول /15') : LABEL[idx];
   $('#wheel').innerHTML = '<div class="pad"></div>' + vals.map((v,n)=>`<div data-n="${n}">${v===''?'—':v}</div>`).join('') + '<div class="pad"></div>';
   $('#pk').classList.remove('hide');
   let n = vals.findIndex(v=>v!=='' && b[idx]!=='' && +v===+b[idx]); if(n<0) n = b[idx]==='' ? (idx===9?vals.length-1:0) : 0;
   PK.n = -1;
-  requestAnimationFrame(()=>{ $('#wheel').scrollTop = n*44; highlight(n); if(b[idx]==='' && idx===9) applyN(n); });
-  S.cur = idx; refreshCard(i);
+  const auto5 = mode==='wk' && b[idx]==='' && idx===9;
+  if(mode==='term' && b[idx]==='') n=0;
+  requestAnimationFrame(()=>{ $('#wheel').scrollTop = n*44; highlight(n); if(auto5) applyN(n); });
+  S.cur = idx; mode==='term' ? refreshT(i) : refreshCard(i);
 }
 function highlight(n){ document.querySelectorAll('#wheel div[data-n]').forEach(el=>el.classList.toggle('sel', +el.dataset.n===n)); }
 function applyN(n){
   if(!PK || n===PK.n) return; PK.n=n;
-  const {i, idx, vals}=PK, b=blk(i,S.wk);
-  const v = vals[n];
+  const {i, idx, vals, mode}=PK, v = vals[n];
+  if(mode==='term'){ const t=trm(i); if(t[idx]===v) return; t[idx]=v; termCalc(i); cacheD(); scheduleTerm(i); refreshT(i); return; }
+  const b=blk(i,S.wk);
   if(b[idx]===v) return;
   b[idx]=v; setBlk(i,S.wk,calc(b)); cacheD(); scheduleSave(i); refreshCard(i);
 }
@@ -402,12 +460,18 @@ $('#wheel').addEventListener('scroll', ()=>{
   clearTimeout(wT); wT=setTimeout(()=>applyN(Math.round($('#wheel').scrollTop/44)), 130);
 });
 $('#wheel').addEventListener('click', e=>{ const el=e.target.closest('div[data-n]'); if(el){ $('#wheel').scrollTo({top:+el.dataset.n*44, behavior:'smooth'}); } });
-function closePicker(){ if(PK){ applyN(Math.round($('#wheel').scrollTop/44)); } $('#pk').classList.add('hide'); const i=PK&&PK.i; PK=null; S.cur=-1; if(i!=null) refreshCard(i); }
+function closePicker(){ if(PK){ applyN(Math.round($('#wheel').scrollTop/44)); } $('#pk').classList.add('hide'); const i=PK&&PK.i, md=PK&&PK.mode; PK=null; S.cur=-1; if(i!=null) (md==='term'?refreshT(i):refreshCard(i)); }
 $('#pkOk').onclick = closePicker;
 $('#pk').addEventListener('click', e=>{ if(e.target.id==='pk') closePicker(); });
 $('#pkNext').onclick = ()=>{
   if(!PK) return; applyN(Math.round($('#wheel').scrollTop/44));
   const {i, idx}=PK, p=ORDER.indexOf(idx);
+  if(PK.mode==='term'){
+    if(idx===0) openPicker(i,1,'term');
+    else if(i<S.d.names.length-1){ $('#pk').classList.add('hide'); PK=null; openT(i+1,0); setTimeout(()=>openPicker(i+1,0,'term'),250); }
+    else closePicker();
+    return;
+  }
   if(p<ORDER.length-1){ openPicker(i, ORDER[p+1]); }
   else if(i<S.d.names.length-1){ $('#pk').classList.add('hide'); PK=null; openStu(i+1, ORDER[0]); setTimeout(()=>openPicker(i+1, ORDER[0]), 250); }
   else closePicker();
@@ -447,6 +511,14 @@ $('#rasdBody').addEventListener('click', e=>{
     cacheD(); renderRasd(); toast('✅ اتحطت 5 درجات سلوك');
   }
 });
+$('#termBody').addEventListener('click', e=>{
+  const cell=e.target.closest('[data-tcell]'), st=e.target.closest('.st');
+  if(cell && st){ openPicker(+st.dataset.i, +cell.dataset.tcell, 'term'); return; }
+  const tap=e.target.closest('[data-ttap]'); if(tap){ const i=+tap.dataset.ttap; if(S.topen===i){ S.topen=-1; refreshT(i);} else openT(i); return; }
+  const nx=e.target.closest('[data-tnext]'); if(nx){ const i=+nx.dataset.tnext; if(i<S.d.names.length-1) openT(i+1); else { S.topen=-1; refreshT(i); toast('✅ خلصت آخر طالب'); } return; }
+  const pv=e.target.closest('[data-tprev]'); if(pv){ const i=+pv.dataset.tprev; if(i>0) openT(i-1); }
+});
+$('#termBody').addEventListener('input', e=>{ if(e.target.id==='tsrch'){ const q=e.target.value.trim(); document.querySelectorAll('#termBody .st').forEach(el=>el.classList.toggle('hide', q && !el.dataset.name.includes(q))); } });
 $('#rasdBody').addEventListener('input', e=>{ if(e.target.id==='srch'){ S.search=e.target.value; applySearch(); } });
 $('#stuBody').addEventListener('click', async e=>{
   const t=e.target;
