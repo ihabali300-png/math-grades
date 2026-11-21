@@ -149,7 +149,7 @@ th.nm{z-index:3;background:var(--card2)}
 
   <div class="card hide" id="addClsCard">
     <h3>➕ فصل جديد</h3>
-    <input type="text" id="newCls" placeholder="اسم الفصل، مثال: 3/3">
+    <input type="text" id="newCls" dir="auto" placeholder="اسم الفصل، مثال: 3/3">
     <div class="mut" style="margin:8px 0 4px">أسماء الطلاب، كل اسم في سطر</div>
     <textarea id="newClsNames" placeholder="احمد ابراهيم على احمد"></textarea>
     <div class="row" style="margin-top:8px">
@@ -211,7 +211,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 10;
+const APP_V = 11;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;                       // أعمدة الأسبوع في الشيت
@@ -708,7 +708,7 @@ $('#cgrid').addEventListener('click', async e=>{
   const rn=t.closest('[data-ren-c]');
   if(rn){
     const c=rn.dataset.renC, card=rn.closest('.ccard');
-    if(!rn.dataset.save){ card.querySelector('.cn').innerHTML=`<input type="text" value="${esc(dispName(c))}">`; rn.textContent='💾 حفظ'; rn.dataset.save=1; card.querySelector('input').focus(); return; }
+    if(!rn.dataset.save){ card.querySelector('.cn').innerHTML=`<input type="text" dir="ltr" value="${esc(dispName(c))}">`; rn.textContent='💾 حفظ'; rn.dataset.save=1; card.querySelector('input').focus(); return; }
     const nn=card.querySelector('input').value.trim(); if(!nn) return;
     rn.disabled=true;
     try{ const j=await api('renameClass',{cls:c,name:nn}); const old=LS.get('d3_'+c,null); if(old){ LS.set('d3_'+j.cls,old); localStorage.removeItem('d3_'+c); } S.q.forEach(x=>{ if(x.cls===c) x.cls=j.cls; }); LS.set('q',S.q); if(S.cls===c) S.cls=j.cls; await loadClasses(); toast('✅ اتعدّل اسم الفصل'); }
@@ -805,6 +805,12 @@ let NEWV=null;
 async function checkUpd(show){
   try{ const r=await fetch('version.json?'+Date.now(),{cache:'no-store'}); const j=await r.json(); NEWV=j;
     const has = j.v>APP_V; $('#updBadge').classList.toggle('hide', !has);
+    // تحديث تلقائي مرة واحدة أول ما التطبيق يفتح
+    if(has && !show && sessionStorage.getItem('autoUpd')!==String(j.v)){
+      sessionStorage.setItem('autoUpd', String(j.v)); LS.set('justUpd', j);
+      try{ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }catch(_){}
+      location.reload(); return;
+    }
     if(has && show){ $('#updCard').innerHTML=`<b>🆕 الجديد في التحديث</b><ul>${(j.notes||[]).map(n=>`<li>${esc(n)}</li>`).join('')}</ul><div class="row"><button class="btn" id="updGo">حدّث دلوقتي</button><button class="btn ghost" id="updLater">بعدين</button></div>`; $('#updCard').classList.remove('hide'); }
     else if(show){ toast('✅ انت على آخر نسخة'); }
   }catch(e){ if(show) toast('مفيش نت',true); }
