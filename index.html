@@ -141,7 +141,7 @@ th.nm{z-index:3;background:var(--card2)}
   <div class="card upd hide" id="updCard"></div>
 
   <div class="card hide" id="setCard">
-    <h3>⚙️ الإعدادات</h3>
+    <h3>⚙️ الإعدادات <span class="mut" id="verLbl"></span></h3>
     <div class="mut">رابط الشيت (<b>Apps Script URL</b>) بيتحط مرة واحدة بس</div>
     <input type="url" id="apiIn" placeholder="https://script.google.com/macros/s/.../exec" style="margin:8px 0" dir="ltr">
     <div class="row"><button class="btn" id="apiSave">حفظ واختبار</button><button class="btn ghost" id="setClose">قفل</button></div>
@@ -211,7 +211,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 12;
+const APP_V = 13;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;                       // أعمدة الأسبوع في الشيت
@@ -253,6 +253,8 @@ const S = {
   d: null, wk: 0, open: -1, topen: -1, screen: 'home', cur: -1, view: 'rasd', q: LS.get('q', []), search: '', sending: false
 };
 
+// روابط نشر قديمة اتأرشفت — لو متسجلة في الإعدادات تتبدل بالرابط الحالي
+if(!S.api || /AKfycbwuEK8g|GMryLww/.test(S.api)){ S.api = DEFAULT_API; LS.set('api', S.api); }
 /* ---------- أدوات ---------- */
 function toast(msg, err){ const t=document.createElement('div'); t.className='toast'+(err?' err':''); t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(), err?4200:2200); }
 async function api(action, p={}){
@@ -792,7 +794,7 @@ $('#addClsGo').onclick = async ()=>{
   try{ const j=await api('addClass',{name,names}); S.cls=j.cls; LS.set('cls',S.cls); $('#addClsCard').classList.add('hide'); $('#newCls').value=''; $('#newClsNames').value=''; await loadClasses(); openClass(j.cls); toast('✅ اتعمل فصل '+name); }
   catch(e){ toast(e.message,true); } b.disabled=false;
 };
-$('#bSet').onclick = ()=>{ $('#apiIn').value=S.api; $('#setCard').classList.toggle('hide'); };
+$('#bSet').onclick = ()=>{ $('#verLbl').textContent='— الإصدار '+APP_V; $('#apiIn').value=S.api; $('#setCard').classList.toggle('hide'); };
 $('#setClose').onclick = ()=>$('#setCard').classList.add('hide');
 $('#apiSave').onclick = async ()=>{
   const u=$('#apiIn').value.trim(); if(!/^https:\/\/script\.google\.com\//.test(u)) return toast('الرابط لازم يبدأ بـ script.google.com', true);
