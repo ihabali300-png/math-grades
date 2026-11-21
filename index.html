@@ -297,7 +297,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 35;
+const APP_V = 36;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;
@@ -430,8 +430,8 @@ async function flush(){
   S.sending = true; qbar();
   while(S.q.length){
     const it=S.q[0];
-    try{ await api(it.kind==='term'?'saveTerm':'save', it); S.q.shift(); LS.set('q', S.q); if(it.cls===S.cls && (it.kind==='term' ? S.view==='term' : it.week===S.wk)) markPending(it.row,false); }
-    catch(e){ if(e.net) break; S.q.shift(); LS.set('q', S.q); if(!/الفصل مش موجود/.test(e.message)) toast('ما اتحفظش: '+e.message, true); }
+    try{ await api(it.kind==='term'?'saveTerm':'save', it); S.q=S.q.filter(x=>x!==it); LS.set('q', S.q); if(it.cls===S.cls && (it.kind==='term' ? S.view==='term' : it.week===S.wk)) markPending(it.row,false); }
+    catch(e){ if(e.net) break; S.q=S.q.filter(x=>x!==it); LS.set('q', S.q); if(!/الفصل مش موجود/.test(e.message)) toast('ما اتحفظش: '+e.message, true); }
   }
   S.sending = false; qbar();
 }
@@ -485,6 +485,22 @@ const NEWCLS={g:3,s:1};
 function drawNewCls(){ $('#newClsPick').innerHTML=cpickHTML(NEWCLS.g,NEWCLS.s); $('#newCls').value=NEWCLS.g+'/'+NEWCLS.s; }
 function goHome(){ S.screen='home'; S.open=-1; S.topen=-1; $('#clsScreen').classList.add('hide'); $('#home').classList.remove('hide'); $('#clsChips').classList.add('hide'); $('#bHome').classList.add('hide'); $('#hTitle').textContent='📘 سجل الدرجات'; renderHome(); scrollTo(0,0); }
 function openClass(c){ S.wkMenu=false; ORD.names=null; ORD.sel=-1; S.selMode=false; S.sel=new Set(); S.mvFor=null; S.cls=c; LS.set('cls',c); S.screen='class'; S.open=-1; S.topen=-1; S.search=''; $('#home').classList.add('hide'); $('#clsScreen').classList.remove('hide'); $('#clsChips').classList.remove('hide'); $('#bHome').classList.remove('hide'); $('#hTitle').textContent='📘 فصل '+dispName(c); renderCls(); render(); loadClass(); scrollTo(0,0); }
+// بيقارن اللي على الموبايل باللي في الشيت: أي درجة موجودة هنا وفاضية هناك بتتبعت تاني (مابيغيّرش درجة موجودة في الشيت)
+function healFrom(prev){
+  const out=[];
+  S.d.names.forEach((nm,i)=>{
+    const pi=prev.names.indexOf(nm); if(pi<0) return;
+    S.d.weeks.forEach((w,k)=>{
+      const pk=prev.weeks.indexOf(w); if(pk<0) return;
+      const pr=(prev.vals[pi]||[]).slice(pk*W,(pk+1)*W); if(!pr.length) return;
+      const b=blk(i,k); let ch=false;
+      ORDER.forEach(x=>{ if(pr[x]!==''&&pr[x]!=null&&(b[x]===''||b[x]==null)){ b[x]=pr[x]; ch=true; } });
+      if(ch){ setBlk(i,k,calc(b)); out.push({i,k}); }
+    });
+    const pt=(prev.term||[])[pi]; if(pt){ const t=trm(i); let ch=false; [0,1].forEach(x=>{ if(pt[x]!==''&&pt[x]!=null&&(t[x]===''||t[x]==null)){ t[x]=pt[x]; ch=true; } }); if(ch){ termCalc(i); out.push({i,t:1}); } }
+  });
+  return out;
+}
 async function loadClass(){
   const cached = LS.get('d3_'+S.cls, null);
   if(cached){ S.d=cached; S.wk=Math.min(LS.get('wk_'+S.cls, cached.weeks.length-1), cached.weeks.length-1); if(S.wk<0)S.wk=0; render(); }
@@ -492,12 +508,15 @@ async function loadClass(){
   try{
     const j = await api('getClass', {cls:S.cls});
     // ضيف تعديلات الطابور اللي لسه ماتبعتتش
+    const prev = S.d && S.d.names ? S.d : null;
     S.d = {names:j.names, weeks:j.weeks, vals:j.vals.map(r=>r.slice()), term:(j.term||[]).map(r=>r.slice()), late:j.late||[], gender:j.gender||{}, url:j.url};
+    const heal = prev ? healFrom(prev) : [];
     S.q.filter(x=>x.cls===S.cls && x.kind==='term').forEach(x=>{ const i=S.d.names.indexOf(x.name); if(i<0) return; const t=trm(i); t[0]=x.vals[0]; t[1]=x.vals[1]; });
     S.d.names.forEach((_,i)=>termCalc(i));
     S.q.filter(x=>x.cls===S.cls && x.kind!=='term').forEach(x=>{ const i=S.d.names.indexOf(x.name); if(i<0) return; const b=blk(i,x.week); ORDER.slice().sort((a,c)=>a-c).forEach((idx,n)=>b[idx]=x.vals[n]); setBlk(i,x.week,calc(b)); });
     let wk = LS.get('wk_'+S.cls, j.weeks.length-1); if(wk>j.weeks.length-1) wk=j.weeks.length-1; if(wk<0) wk=0; S.wk=wk;
     cacheD(); render();
+    if(heal.length){ heal.forEach(h=> h.t ? scheduleTerm(h.i) : (()=>{ const w0=S.wk; S.wk=h.k; scheduleSave(h.i); S.wk=w0; })()); toast(`🔄 اتبعت ${heal.length} درجة ماكانتش وصلت للشيت`); }
   }catch(e){ if(!S.d){ $('#rasdBody').innerHTML=`<div class="card">⚠️ ${esc(e.message)}</div>`; } else if(!e.net) toast(e.message,true); }
 }
 
