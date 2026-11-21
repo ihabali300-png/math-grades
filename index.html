@@ -84,6 +84,9 @@ main{padding:12px 16px;max-width:760px;margin:auto;padding-bottom:110px}
 .wkbar .wkcur{flex:1;font-size:15px;font-weight:700;padding:10px 8px;background:#1b2a12;border-color:var(--acc);color:var(--acc)}
 .wkbar .lk.on{background:#3a1717;border-color:#5b2323;color:var(--red)}
 .wkbar button:disabled{opacity:.3}
+.wkbar .red{background:#3a1717;border-color:#5b2323;color:var(--red);font-size:15px;padding:0 10px}
+.wkbar .ed{font-size:15px;padding:0 10px}
+.wkcur{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .lockbn{background:#2a1212;border:1px solid #5b2323;color:#fca5a5;border-radius:12px;padding:9px 12px;margin-bottom:10px;font-size:14px;text-align:center}
 .st.locked .cell{cursor:default}
 .snack{position:fixed;left:12px;right:12px;bottom:84px;z-index:35;display:flex;align-items:center;gap:8px;background:#e7f0e9;color:#0b120d;border-radius:12px;padding:8px 8px 8px 14px;box-shadow:0 6px 18px rgba(0,0,0,.45);max-width:740px;margin:auto}
@@ -171,7 +174,7 @@ th,td{padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;te
 th{position:sticky;top:0;background:var(--card2);z-index:2;font-size:13px}
 td.nm,th.nm{position:sticky;right:0;background:var(--card);text-align:right;z-index:1}
 th.nm{z-index:3;background:var(--card2)}
-.toast{position:fixed;top:120px;left:50%;transform:translateX(-50%);background:#1b2a12;border:1px solid var(--acc);color:var(--txt);padding:10px 16px;border-radius:12px;z-index:60;font-size:14px;max-width:90%;text-align:center}
+.toast{pointer-events:none;position:fixed;top:120px;left:50%;transform:translateX(-50%);background:#1b2a12;border:1px solid var(--acc);color:var(--txt);padding:10px 16px;border-radius:12px;z-index:60;font-size:14px;max-width:90%;text-align:center}
 .toast.err{border-color:var(--red);background:#2a1212}
 .sline{display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid var(--line)}
 .sline:last-child{border-bottom:0}
@@ -294,7 +297,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 34;
+const APP_V = 35;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;
@@ -481,7 +484,7 @@ function pickSec(cur,onSet){ const v=[1,2,3,4,5,6,7,8,9,10]; genPicker('الفص
 const NEWCLS={g:3,s:1};
 function drawNewCls(){ $('#newClsPick').innerHTML=cpickHTML(NEWCLS.g,NEWCLS.s); $('#newCls').value=NEWCLS.g+'/'+NEWCLS.s; }
 function goHome(){ S.screen='home'; S.open=-1; S.topen=-1; $('#clsScreen').classList.add('hide'); $('#home').classList.remove('hide'); $('#clsChips').classList.add('hide'); $('#bHome').classList.add('hide'); $('#hTitle').textContent='📘 سجل الدرجات'; renderHome(); scrollTo(0,0); }
-function openClass(c){ ORD.names=null; ORD.sel=-1; S.selMode=false; S.sel=new Set(); S.mvFor=null; S.cls=c; LS.set('cls',c); S.screen='class'; S.open=-1; S.topen=-1; S.search=''; $('#home').classList.add('hide'); $('#clsScreen').classList.remove('hide'); $('#clsChips').classList.remove('hide'); $('#bHome').classList.remove('hide'); $('#hTitle').textContent='📘 فصل '+dispName(c); renderCls(); render(); loadClass(); scrollTo(0,0); }
+function openClass(c){ S.wkMenu=false; ORD.names=null; ORD.sel=-1; S.selMode=false; S.sel=new Set(); S.mvFor=null; S.cls=c; LS.set('cls',c); S.screen='class'; S.open=-1; S.topen=-1; S.search=''; $('#home').classList.add('hide'); $('#clsScreen').classList.remove('hide'); $('#clsChips').classList.remove('hide'); $('#bHome').classList.remove('hide'); $('#hTitle').textContent='📘 فصل '+dispName(c); renderCls(); render(); loadClass(); scrollTo(0,0); }
 async function loadClass(){
   const cached = LS.get('d3_'+S.cls, null);
   if(cached){ S.d=cached; S.wk=Math.min(LS.get('wk_'+S.cls, cached.weeks.length-1), cached.weeks.length-1); if(S.wk<0)S.wk=0; render(); }
@@ -517,12 +520,23 @@ function renderWeeks(){
   const n=S.d.weeks.length;
   if(!n){ $('#wkChips').innerHTML=`<div class="wkbar"><button class="wkcur" data-wk="add">＋ أول أسبوع</button></div>`; return; }
   const lk=isLocked();
+  if(S.wkMenu){ $('#wkChips').innerHTML=`<div class="wkbar"><button class="wkcur" data-wk="x">${lk?'🔒 ':'📅 '}${esc(S.d.weeks[S.wk])}</button><button class="ed" data-wk="ren">✏️ تعديل</button><button class="red" data-wk="del">🗑️ حذف</button><button data-wk="x">✖</button></div>`; return; }
   $('#wkChips').innerHTML=`<div class="wkbar">
     <button data-wk="prev" ${S.wk<=0?'disabled':''} title="الأسبوع اللي قبله">›</button>
     <button class="wkcur" data-wk="pick">${lk?'🔒 ':'📅 '}${esc(S.d.weeks[S.wk])} ▾</button>
     <button data-wk="next" ${S.wk>=n-1?'disabled':''} title="الأسبوع اللي بعده">‹</button>
     <button class="lk ${lk?'on':''}" data-wk="lock" title="قفل الأسبوع">${lk?'🔒':'🔓'}</button>
     <button data-wk="add" title="أسبوع جديد">＋</button></div>`;
+}
+let wkLP=0, wkFired=false, wkT=null;
+$('#wkChips').addEventListener('pointerdown', e=>{ const b=e.target.closest('[data-wk="pick"]'); if(!b) return; clearTimeout(wkT); wkT=setTimeout(()=>{ wkFired=true; S.wkMenu=true; renderWeeks(); if(navigator.vibrate) try{navigator.vibrate(30);}catch(_){} },500); });
+$('#wkChips').addEventListener('pointerup', ()=>{ clearTimeout(wkT); if(wkFired){ wkFired=false; wkLP=Date.now(); } });
+['pointercancel','pointerleave'].forEach(ev=>$('#wkChips').addEventListener(ev, ()=>clearTimeout(wkT)));
+$('#wkChips').addEventListener('contextmenu', e=>{ if(e.target.closest('[data-wk]')) e.preventDefault(); });
+function renWeekSheet(){
+  const w=S.d.weeks[S.wk], m=w.match(/^(.*?)\s*•\s*(\d{1,2})\/(\d{1,2})\s*$/);
+  const nm=m?m[1]:w, y=new Date().getFullYear(), dt=m?`${y}-${m[3].padStart(2,'0')}-${m[2].padStart(2,'0')}`:'';
+  openSheet('✏️ تعديل الأسبوع', `<div style="padding:4px 10px"><input type="text" id="wkRenName" value="${esc(nm)}" style="margin-bottom:8px"><input type="date" id="wkRenDate" value="${dt}"></div><div class="sbtns"><button class="btn ghost" data-act="sheetx">إلغاء</button><button class="btn" data-act="wkren">حفظ</button></div>`);
 }
 function weekSheet(){
   openSheet('📅 الأسابيع', S.d.weeks.map((w,k)=>`<button class="sitm" data-act="wk:${k}" style="${k===S.wk?'background:#1b2a12;color:var(--acc);font-weight:800':''}"><span class="e">${isLocked(k)?'🔒':'📅'}</span>${esc(w)}</button>`).join(''));
@@ -991,6 +1005,22 @@ async function selAction(act, el){
       return;
     }
   }
+  if(act==='wkren'){
+    const nm=$('#wkRenName').value.trim(), dt=$('#wkRenDate').value; if(!nm) return toast('اكتب اسم الأسبوع',true);
+    const label = dt ? `${nm} • ${dt.slice(8,10)}/${dt.slice(5,7)}` : nm, old=S.d.weeks[S.wk];
+    el.disabled=true;
+    try{ await api('renameWeek',{cls:S.cls,week:S.wk,label,old}); const wasL=isLocked(); if(wasL){ setLock(S.wk,false); S.d.weeks[S.wk]=label; setLock(S.wk,true); } closeSheet(); await loadClass(); toast('✅ اتعدّل الأسبوع'); }
+    catch(er){ toast(/قديم/.test(er.message)?'كود الشيت محتاج يتحدّث عشان تعديل الأسبوع':er.message,true); el.disabled=false; }
+    return;
+  }
+  if(act==='wkdel'){
+    el.disabled=true; el.textContent='⏳ بيمسح…';
+    try{ await flush(); if(S.q.some(x=>x.cls===S.cls && x.week===S.wk)) throw new Error('فيه درجات للأسبوع ده لسه ماتحفظتش — استنى النت');
+      const k=S.wk; if(isLocked(k)) setLock(k,false);
+      await api('deleteWeek',{cls:S.cls,week:k,label:S.d.weeks[k]}); LS.set('wk_'+S.cls, Math.max(0,k-1)); closeSheet(); await loadClass(); toast('🗑️ الأسبوع اتمسح'); }
+    catch(er){ closeSheet(); toast(er.message,true); }
+    return;
+  }
   if(act.startsWith('wk:')){ S.wk=+act.slice(3); LS.set('wk_'+S.cls,S.wk); S.open=-1; closeSheet(); renderRasd(); return; }
   if(act.startsWith('rup:')||act.startsWith('rdn:')){ const i=+act.slice(4); ordMove(i, i+(act[1]==='u'?-1:1)); return; }
   if(act.startsWith('mvc:')){ const to=act.slice(4); confirmSheet('🔀 نقل', `نقل <b>${S.sel.size}</b> طالب لفصل <b>${dispName(to)}</b> بدرجاتهم؟`, 'نقل', 'mvgo:'+to); return; }
@@ -1149,7 +1179,11 @@ $('#wkChips').onclick = e=>{
   const c=e.target.closest('[data-wk]'); if(!c) return;
   const a=c.dataset.wk, n=S.d.weeks.length;
   if(a==='prev'||a==='next'){ S.wk=Math.max(0,Math.min(n-1,S.wk+(a==='next'?1:-1))); LS.set('wk_'+S.cls,S.wk); S.open=-1; renderRasd(); return; }
+  if(Date.now()-wkLP<250) return; // الضغطة اللي بتنهي الضغط المطول
   if(a==='pick'){ weekSheet(); return; }
+  if(a==='x'){ S.wkMenu=false; renderWeeks(); return; }
+  if(a==='ren'){ S.wkMenu=false; renderWeeks(); renWeekSheet(); return; }
+  if(a==='del'){ S.wkMenu=false; renderWeeks(); confirmSheet('🗑️ حذف الأسبوع', `هيتمسح «<b>${esc(S.d.weeks[S.wk])}</b>» بكل درجاته من الشيت. مينفعش ترجع في ده.`, 'حذف', 'wkdel', true); return; }
   if(a==='lock'){ const on=!isLocked(); setLock(S.wk,on); S.open=-1; renderRasd(); toast(on?'🔒 الأسبوع اتقفل — للعرض بس':'🔓 الأسبوع اتفتح للتعديل'); return; }
   if(a==='add'){ const n=S.d.weeks.length+1; $('#wkName').value='الأسبوع '+n; $('#wkDate').value=new Date().toISOString().slice(0,10); $('#addWkCard').classList.remove('hide'); return; }
 };
@@ -1193,8 +1227,9 @@ $('#stuBody').addEventListener('change', async e=>{
   if(t.dataset.oon!=null && OCR.res){ OCR.res.items[+t.dataset.oon].on=t.checked; const b=$('#ocrAdd'); if(b) b.textContent=`➕ إضافة المحدد (${OCR.res.items.filter(x=>x.on).length})`; }
 });
 let lpT=null;
-let lpJust=0;
-function openLP(el){ lpJust=Date.now(); const it=el.closest('.sitem'), n=it.dataset.name; S.selMode=true; S.mvFor=null; if(S.sel.has(n)) S.sel.delete(n); else S.sel.add(n); renderStu(); if(navigator.vibrate) try{ navigator.vibrate(30); }catch(_){} }
+let lpJust=0, lpFired=false;
+document.addEventListener('pointerup', ()=>{ if(lpFired){ lpFired=false; lpJust=Date.now(); } }, true);
+function openLP(el){ lpFired=true; lpJust=Date.now(); const it=el.closest('.sitem'), n=it.dataset.name; S.selMode=true; S.mvFor=null; if(S.sel.has(n)) S.sel.delete(n); else S.sel.add(n); renderStu(); if(navigator.vibrate) try{ navigator.vibrate(30); }catch(_){} }
 function selToggleRow(it){ const n=it.dataset.name; const on=!S.sel.has(n); on?S.sel.add(n):S.sel.delete(n); renderStu(); }
 $('#stuBody').addEventListener('pointerdown', e=>{ const el=e.target.closest('[data-lp]'); if(!el) return; clearTimeout(lpT); lpT=setTimeout(()=>{ lpT=null; openLP(el); }, 500); });
 ['pointerup','pointercancel','pointerleave'].forEach(ev=>$('#stuBody').addEventListener(ev, ()=>{ clearTimeout(lpT); }));
@@ -1246,7 +1281,7 @@ $('#stuBody').addEventListener('click', async e=>{
   if(t.dataset.ss){ ordSel(t.dataset.ss); return; }
   const pend = ORD.cls===S.cls && ORD.names;
   if(pend && (t.dataset.gs || ['selLate','selGrade','selMove','selDel'].includes(t.id))) return toast('احفظ الترتيب الأول أو الغيه',true);
-  if(Date.now()-lpJust<700 && t.closest('.sitem')) return; // الضغط المطول نفسه مايعكسش التحديد
+  if(Date.now()-lpJust<250 && t.closest('.sitem')) return; // الضغط المطول نفسه مايعكسش التحديد
   if(S.selMode && !t.closest('button,input,.selbar,.mvbox') && t.closest('.sitem')){ selToggleRow(t.closest('.sitem')); return; }
   if(t.id==='selToggle' || t.id==='selGo'){ S.selMode = t.id==='selGo' ? true : !S.selMode; S.sel=new Set(); S.mvFor=null; ORD.sel=-1; renderStu(); return; }
   if(t.id==='selAll'){ S.d.names.forEach(n=>{ if(S.gf==='all'||gOf(n)===S.gf) S.sel.add(n); }); renderStu(); return; }

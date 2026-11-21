@@ -269,6 +269,17 @@ const ACTIONS = {
     return { week: k };
   },
 
+  renameWeek: (ss, b) => {
+    const sh = getSh(ss, b.cls);
+    const k = Number(b.week);
+    if (!(k >= 0 && k < nWeeks(sh))) throw new Error('الأسبوع مش موجود');
+    if (b.old && sh.getRange(1, startCol(k)).getDisplayValue() !== b.old) throw new Error('الشيت اتغير — حدّث الصفحة');
+    const label = String(b.label || '').trim();
+    if (!label) throw new Error('اكتب اسم الأسبوع');
+    sh.getRange(1, startCol(k)).setValue(label);
+    return {};
+  },
+
   deleteWeek: (ss, b) => {
     const sh = getSh(ss, b.cls);
     const k = Number(b.week);
