@@ -4,6 +4,9 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.print.PrintAttributes;
+import android.print.PrintManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -32,6 +35,17 @@ public class MainActivity extends Activity {
                 return true;
             }
         });
+        web.addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public void print(final String name) {
+                runOnUiThread(() -> {
+                    PrintManager pm = (PrintManager) getSystemService(PRINT_SERVICE);
+                    PrintAttributes attrs = new PrintAttributes.Builder()
+                        .setMediaSize(PrintAttributes.MediaSize.ISO_A4.asLandscape()).build();
+                    pm.print(name, web.createPrintDocumentAdapter(name), attrs);
+                });
+            }
+        }, "AndroidPrint");
         setContentView(web);
         if (b != null) web.restoreState(b); else web.loadUrl(BuildConfig.APP_URL);
     }

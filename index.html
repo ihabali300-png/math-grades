@@ -89,6 +89,29 @@ th.nm{z-index:3;background:var(--card2)}
 .qbar{font-size:13px;color:var(--yel);text-align:center;margin-bottom:8px}
 .loading{text-align:center;padding:30px;color:var(--mut)}
 .upd ul{margin:6px 0 10px;padding-inline-start:20px}
+#printArea{display:none}
+.pp{direction:rtl;color:#000;background:#fff;font-family:Arial,"Times New Roman",sans-serif;page-break-after:always;break-after:page}
+.pp:last-child{page-break-after:auto;break-after:auto}
+.pph{display:grid;grid-template-columns:1fr 1fr 1fr;font-size:10pt;margin-bottom:1.5mm;align-items:end}
+.pph .c{text-align:center;font-size:14pt;font-weight:700}
+.pph .l{text-align:left}
+.pp table{width:100%;border-collapse:collapse;table-layout:fixed;border:2.5px solid #000}
+.pp th,.pp td{border:1px solid #000;padding:0 1mm;font-size:10pt;text-align:center;height:5.4mm;overflow:hidden;white-space:nowrap;background:#fff;color:#000;position:static}
+.pp td.nm{text-align:right;font-size:10pt}
+.pp .wk{font-size:10pt;font-weight:700;height:7mm}
+.pp .vh{height:23mm;vertical-align:bottom;padding:1mm 0}
+.pp .vh span{writing-mode:vertical-rl;transform:rotate(180deg);display:inline-block;font-size:9.5pt;font-weight:700;white-space:normal;line-height:1.15;max-height:22mm}
+.pp .mx{font-size:9pt;height:5mm}
+.pp .eb{border-left:2.5px solid #000}
+.pp .hb th,.pp tr.hb td{border-bottom:2.5px solid #000}
+.pchk{display:flex;align-items:center;gap:8px;padding:7px 2px}
+.pchk input{width:20px;height:20px;accent-color:#a3e635}
+@page{size:A4 landscape;margin:8mm}
+@media print{
+  html,body{background:#fff!important}
+  body>*:not(#printArea){display:none!important}
+  #printArea{display:block!important}
+}
 </style>
 </head>
 <body>
@@ -153,6 +176,7 @@ th.nm{z-index:3;background:var(--card2)}
   <section id="v-stu" class="hide"><div id="stuBody"></div></section>
 </main>
 
+<div id="printArea"></div>
 <div class="pk hide" id="pk">
   <div class="pkbox">
     <div class="pkhead">
@@ -165,7 +189,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 4;
+const APP_V = 5;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwuEK8gV3b0rtd3eVTCpWLyOPNifvMuNz9nJ--hMvMnXUhqIY6MpU7py56699_bW-l1/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;                       // أعمدة الأسبوع في الشيت
@@ -179,9 +203,9 @@ const SEED33 = `احمد ابراهيم على احمد
 شعبان مصطفى ابراهيم محمد
 طه عبد الهادي سليمان جاد
 عبد الرحمن محمد سيد عبد العظيم
-على مصطفى حسين محمود
+عدى مصطفى حسين محمود
 مازن خالد ابراهيم محمود
-محمد قرباوي حسيب عبد الرحمن
+محمد قرباوى حسيب عبد الرحمن
 مصطفى عبد الوهاب مصطفى سليمان
 مصطفى نصر احمد نصر
 مؤمن طه احمد يس
@@ -190,11 +214,11 @@ const SEED33 = `احمد ابراهيم على احمد
 اسراء على عبد الحي جاد
 الزهراء صلاح الدين محمود حسن
 ايتن احمد محمد احمد
-بيشاور عبد السلام ابو القاسم صادق
+بشاير عبد السلام ابو القاسم صادق
 جودي محمد سعد سرور
 ريفان صالح احمد مدني
-ريم محمد عبد الرحيم حسن
-سارة مدحت الدقاوي على
+ريم محمد عبدالرحيم حسن
+سارة مدحت ادفاوى على
 سدرة فيصل محمد ابو المجد
 سما رمضان سيد عبد الرضى`;
 
@@ -417,8 +441,55 @@ function renderRes(){
     const av = d.weeks.length ? blk(i, d.weeks.length-1)[11] : '';
     h += `<tr><td class="nm">${i+1}. ${esc(n)}</td>${t.map(v=>`<td>${fmt(v)}</td>`).join('')}<td style="color:var(--acc);font-weight:700">${fmt(av)}</td><td style="color:var(--yel);font-weight:700">${fmt(termCalc(i)[4])}</td></tr>`;
   });
-  $('#resBody').innerHTML = h + '</tbody></table></div>';
+  h += '</tbody></table></div>';
+  // كارت الطباعة
+  const pages=[]; for(let k=0;k<d.weeks.length;k+=4) pages.push(k);
+  const P=LS.get('ph',{dir:'مديرية التربية والتعليم بأسوان',adm:'إدارة إدفو التعليمية',sch:'العوضلاب الابتدائية',sub:'الرياضيات'});
+  h += `<div class="card" style="margin-top:10px"><h3>🖨️ طباعة زي الدفتر (A4 بالعرض)</h3>
+    ${pages.map((k,n)=>`<label class="pchk"><input type="checkbox" class="pg" value="${k}" ${n===pages.length-1?'checked':''}> صفحة ${n+1}: ${esc(d.weeks[k])} ← ${esc(d.weeks[Math.min(k+3,d.weeks.length-1)])}</label>`).join('')}
+    <label class="pchk"><input type="checkbox" id="pgTerm"> 🏁 صفحة اختبارات التيرم</label>
+    <details style="margin:6px 0 10px"><summary class="mut">✏️ بيانات رأس الصفحة</summary>
+      <input type="text" id="phDir" value="${esc(P.dir)}" style="margin-top:6px"><input type="text" id="phAdm" value="${esc(P.adm)}" style="margin-top:6px"><input type="text" id="phSch" value="${esc(P.sch)}" style="margin-top:6px"><input type="text" id="phSub" value="${esc(P.sub)}" style="margin-top:6px">
+    </details>
+    <button class="btn" id="doPrint" style="width:100%">🖨️ طباعة / حفظ PDF</button></div>`;
+  $('#resBody').innerHTML = h;
 }
+function ppHead(P, extra){
+  return `<div class="pph"><div>${esc(P.dir)}<br>${esc(P.adm)}</div><div class="c">رصد درجات فصل : ${esc(S.cls.replace(/-/g,'/'))}${extra||''}</div><div class="l">مدرسة / ${esc(P.sch)}<br>مادة / ${esc(P.sub)}</div></div>`;
+}
+function buildPrint(){
+  const d=S.d;
+  const P={dir:$('#phDir').value.trim(),adm:$('#phAdm').value.trim(),sch:$('#phSch').value.trim(),sub:$('#phSub').value.trim()}; LS.set('ph',P);
+  const starts=[...document.querySelectorAll('.pg:checked')].map(x=>+x.value);
+  const COLS=[[7,'ك واجب',5],[6,'ك حصة',5],[8,'تقييم أسبوعي',10],[9,'سلوك ومواظبة',5],[10,'المجموع',25]];
+  let out='';
+  starts.forEach(k0=>{
+    const ks=[0,1,2,3].map(j=>k0+j);
+    let t=`<div class="pp">${ppHead(P)}<table><colgroup><col style="width:60mm">${ks.map(()=>COLS.map(()=>'<col>').join('')).join('')}<col style="width:7mm"></colgroup>`;
+    t+=`<tr><th rowspan="3" class="eb" style="font-size:16pt">الاســــم</th>${ks.map(k=>`<th colspan="5" class="wk eb">${k<d.weeks.length?esc(d.weeks[k]):'الأسبوع'}</th>`).join('')}<th rowspan="3"></th></tr>`;
+    t+=`<tr>${ks.map(()=>COLS.map((c,n)=>`<th class="vh ${n===4?'eb':''}"><span>${c[1]}</span></th>`).join('')).join('')}</tr>`;
+    t+=`<tr class="hb">${ks.map(()=>COLS.map((c,n)=>`<td class="mx ${n===4?'eb':''}">${c[2]}</td>`).join('')).join('')}</tr>`;
+    d.names.forEach((nm,i)=>{
+      t+=`<tr><td class="nm eb">${esc(nm)}</td>${ks.map(k=>{ const b=k<d.weeks.length?blk(i,k):null; return COLS.map((c,n)=>`<td class="${n===4?'eb':''}" ${n===4?'style="font-weight:700"':''}>${b&&b[c[0]]!==''?b[c[0]]:''}</td>`).join(''); }).join('')}<td></td></tr>`;
+    });
+    out+=t+'</table></div>';
+  });
+  if($('#pgTerm').checked){
+    const TC=[['الشهر الأول',15,0],['الشهر الثاني',15,1],['متوسط الشهرين',15,2],['متوسط الأسابيع',25,3],['المجموع',40,4]];
+    let t=`<div class="pp">${ppHead(P,' — اختبارات التيرم')}<table style="width:70%;margin:auto"><colgroup><col style="width:9mm"><col style="width:62mm">${TC.map(()=>'<col>').join('')}</colgroup>`;
+    t+=`<tr><th rowspan="2">م</th><th rowspan="2" class="eb" style="font-size:14pt">الاســــم</th>${TC.map(c=>`<th class="wk">${c[0]}</th>`).join('')}</tr>`;
+    t+=`<tr class="hb">${TC.map(c=>`<td class="mx">${c[1]}</td>`).join('')}</tr>`;
+    d.names.forEach((nm,i)=>{ const r=termCalc(i); t+=`<tr><td>${i+1}</td><td class="nm eb">${esc(nm)}</td>${TC.map(c=>`<td ${c[2]===4?'style="font-weight:700"':''}>${r[c[2]]!==''?r[c[2]]:''}</td>`).join('')}</tr>`; });
+    out+=t+'</table></div>';
+  }
+  return out;
+}
+$('#resBody').addEventListener('click', e=>{
+  if(e.target.id!=='doPrint') return;
+  const html=buildPrint(); if(!html) return toast('اختار صفحة واحدة على الأقل', true);
+  $('#printArea').innerHTML=html;
+  setTimeout(()=>{ if(window.AndroidPrint && AndroidPrint.print) AndroidPrint.print('سجل الدرجات ' + S.cls); else window.print(); }, 200);
+});
 function renderStu(){
   const d=S.d;
   let h = `<div class="card"><h3>➕ إضافة طلاب لفصل ${esc(S.cls)}</h3><textarea id="addNames" placeholder="كل اسم في سطر"></textarea><button class="btn" id="addNamesGo" style="margin-top:8px">إضافة</button></div>`;
