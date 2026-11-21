@@ -177,7 +177,8 @@ th.nm{z-index:3;background:var(--card2)}
     <h3>⚙️ الإعدادات <span class="mut" id="verLbl"></span></h3>
     <div class="mut">رابط الشيت (<b>Apps Script URL</b>) بيتحط مرة واحدة بس</div>
     <input type="url" id="apiIn" placeholder="https://script.google.com/macros/s/.../exec" style="margin:8px 0" dir="ltr">
-    <div class="row"><button class="btn" id="apiSave">حفظ واختبار</button><button class="btn ghost" id="setClose">قفل</button></div>
+    <div class="row"><button class="btn" id="apiSave">حفظ واختبار</button><button class="btn ghost" id="devInfo">📱 معلومات الجهاز</button><button class="btn ghost" id="setClose">قفل</button></div>
+    <pre id="devBox" class="hide" dir="ltr" style="white-space:pre-wrap;background:var(--card2);border-radius:12px;padding:10px;font-size:12px;margin-top:10px;line-height:1.6"></pre>
   </div>
 
   <div class="card hide" id="addClsCard">
@@ -245,7 +246,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 21;
+const APP_V = 22;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;                       // أعمدة الأسبوع في الشيت
@@ -990,6 +991,28 @@ $('#addClsGo').onclick = async ()=>{
   catch(e){ toast(e.message,true); } b.disabled=false;
 };
 $('#bSet').onclick = ()=>{ $('#verLbl').textContent='— الإصدار '+APP_V; $('#apiIn').value=S.api; $('#setCard').classList.toggle('hide'); };
+$('#devInfo').onclick = ()=>{
+  const ua=navigator.userAgent, m=k=>{ const r=ua.match(k); return r?r[1]:'?'; };
+  const probe=document.createElement('div'); probe.style.cssText='font-size:16px;position:absolute;visibility:hidden'; probe.textContent='x'; document.body.appendChild(probe); const fs=getComputedStyle(probe).fontSize; probe.remove();
+  let used=0; try{ for(const k in localStorage) if(localStorage.hasOwnProperty(k)) used+=(localStorage[k]||'').length; }catch(_){}
+  const L=[
+    'App: v'+APP_V+(IN_APP?' (APK)':' (browser)'),
+    'Android: '+m(/Android ([\d.]+)/),
+    'Model: '+m(/Android [\d.]+; ([^;)]+)/),
+    'WebView/Chrome: '+m(/Chrome\/([\d.]+)/),
+    'Screen (css px): '+screen.width+' x '+screen.height,
+    'Viewport: '+innerWidth+' x '+innerHeight,
+    'Pixel ratio: '+devicePixelRatio,
+    'Font 16px renders as: '+fs,
+    'RAM (GB): '+(navigator.deviceMemory||'?'),
+    'CPU cores: '+(navigator.hardwareConcurrency||'?'),
+    'Touch points: '+(navigator.maxTouchPoints||0),
+    'Dark mode: '+(matchMedia('(prefers-color-scheme: dark)').matches?'yes':'no'),
+    'Online: '+navigator.onLine,
+    'Queue: '+S.q.length+' • Storage used: '+Math.round(used/1024)+' KB'
+  ];
+  $('#devBox').textContent=L.join('\n'); $('#devBox').classList.remove('hide');
+};
 $('#setClose').onclick = ()=>$('#setCard').classList.add('hide');
 $('#apiSave').onclick = async ()=>{
   const u=$('#apiIn').value.trim(); if(!/^https:\/\/script\.google\.com\//.test(u)) return toast('الرابط لازم يبدأ بـ script.google.com', true);
