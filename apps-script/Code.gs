@@ -157,6 +157,25 @@ const ACTIONS = {
     return { cls: name };
   },
 
+  renameClass: (ss, b) => {
+    const sh = ss.getSheetByName(tabName(b.cls));
+    if (!sh || !isClass(sh)) throw new Error('الفصل مش موجود');
+    const name = tabName(b.name);
+    if (!name) throw new Error('اكتب اسم الفصل');
+    if (name !== sh.getName() && ss.getSheetByName(name)) throw new Error('فيه فصل بنفس الاسم');
+    sh.setName(name);
+    sh.getRange(1, 1).setValue('📘 فصل ' + name);
+    return { cls: name };
+  },
+
+  deleteClass: (ss, b) => {
+    const sh = ss.getSheetByName(tabName(b.cls));
+    if (!sh || !isClass(sh)) throw new Error('الفصل مش موجود');
+    if (ss.getSheets().length === 1) ss.insertSheet('الورقة1');
+    ss.deleteSheet(sh);
+    return {};
+  },
+
   getClass: (ss, b) => {
     const sh = getSh(ss, b.cls);
     const n = nStudents(sh), k = nWeeks(sh);
