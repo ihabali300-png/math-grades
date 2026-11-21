@@ -6,8 +6,8 @@ android {
         applicationId 'com.ihab.grades'
         minSdk 24
         targetSdk 34
-        versionCode 5
-        versionName '1.4'
+        versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '5').toInteger() + 100)
+        versionName '2.0'
         buildConfigField 'String', 'APP_URL', '"https://ihabali300-png.github.io/math-grades/"'
     }
     buildFeatures { buildConfig true }

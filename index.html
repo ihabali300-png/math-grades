@@ -24,8 +24,16 @@ header{position:sticky;top:0;z-index:20;background:rgba(11,18,13,.96);backdrop-f
 .chip{flex:none;padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:14px;white-space:nowrap}
 .chip.on{background:var(--acc);color:#0b120d;border-color:var(--acc);font-weight:700}
 .chip.add{border-style:dashed;color:var(--acc)}
-main{padding:12px;max-width:760px;margin:auto;padding-bottom:90px}
-.tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:12px}
+main{padding:12px;max-width:760px;margin:auto;padding-bottom:110px}
+.acc{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:10px;overflow:hidden}
+.acc>summary{list-style:none;cursor:pointer;padding:13px 14px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.acc>summary::-webkit-details-marker{display:none}
+.acc>summary::after{content:'‹';margin-inline-start:auto;color:var(--mut);font-size:20px;transition:transform .2s;transform:rotate(-90deg)}
+.acc[open]>summary::after{transform:rotate(90deg)}
+.acc>.accb{padding:0 12px 12px}
+.acc .card{border:0;padding:0;margin:0;background:none}
+.acc .card h3{display:none}
+.tiles{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);gap:2px;background:rgba(11,18,13,.97);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
 .home h2{font-size:18px;margin:4px 2px 12px}
 .cgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .ccard{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 10px 10px;text-align:center}
@@ -63,9 +71,9 @@ main{padding:12px;max-width:760px;margin:auto;padding-bottom:90px}
 .cpick .prev{display:grid;place-items:center;background:#1b2a12;border:1px solid #2f4a1c;border-radius:12px;font-size:26px;font-weight:800;color:var(--acc)}
 .pv{background:#fff;border-radius:10px;overflow:auto;padding:6px;max-height:60vh}
 .pv .pp{zoom:.42;margin-bottom:20px}
-.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:9px 1px;text-align:center;font-size:12px;line-height:1.3}
-.tile span{display:block;font-size:26px;margin-bottom:4px}
-.tile.on{border-color:var(--acc);background:#1b2a12;color:var(--acc);font-weight:700}
+.tile{background:none;border:0;border-radius:12px;padding:5px 1px;text-align:center;font-size:11px;line-height:1.25;color:var(--mut)}
+.tile span{display:block;font-size:22px;margin-bottom:2px}
+.tile.on{background:#1b2a12;color:var(--acc);font-weight:700}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:10px}
 .card h3{margin:0 0 8px;font-size:16px}
 .mut{color:var(--mut);font-size:13px}
@@ -197,11 +205,11 @@ th.nm{z-index:3;background:var(--card2)}
 
   <div id="clsScreen" class="hide">
   <div class="tiles" id="tiles">
-    <button class="tile on" data-v="rasd"><span>📝</span>رصد الدرجات</button>
-    <button class="tile" data-v="term"><span>🏁</span>اختبارات التيرم</button>
+    <button class="tile on" data-v="rasd"><span>📝</span>الرصد</button>
+    <button class="tile" data-v="term"><span>🏁</span>التيرم</button>
     <button class="tile" data-v="res"><span>📊</span>النتائج</button>
     <button class="tile" data-v="stu"><span>👥</span>الطلاب</button>
-    <button class="tile" data-v="print"><span>🖨️</span>طباعة A4</button>
+    <button class="tile" data-v="print"><span>🖨️</span>الطباعة</button>
   </div>
 
   <div class="qbar hide" id="qbar"></div>
@@ -237,7 +245,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 20;
+const APP_V = 21;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;                       // أعمدة الأسبوع في الشيت
@@ -527,10 +535,10 @@ const COLS=[[7,'ك واجب',5],[6,'ك حصة',5],[8,'تقييم أسبوعي',1
 function getPH(){ return LS.get('ph',{dir:'مديرية التربية والتعليم بأسوان',adm:'إدارة إدفو التعليمية',sch:'العوضلاب الابتدائية',sub:'الرياضيات'}); }
 function renderPrint(){
   const P=getPH(), sel=LS.get('prSel',{pm:'last',from:1,to:1,pick:'',term:false});
-  let h = `<div class="card"><h3>🏫 الفصول</h3>
+  let h = `<details class="acc" ${S.classes.length>1?'open':''}><summary>🏫 الفصول</summary><div class="accb"><div class="card"><h3>🏫</h3>
     <label class="pchk"><input type="checkbox" id="pcAll"> كل الفصول</label>
     ${S.classes.map(c=>`<label class="pchk"><input type="checkbox" class="pc" value="${esc(c)}" ${c===S.cls?'checked':''}> فصل ${esc(dispName(c))}</label>`).join('')}
-  </div>
+  </div></div></details>
   <div class="card"><h3>📄 الصفحات <span class="mut">(كل صفحة = 4 أسابيع)</span></h3>
     <label class="pchk"><input type="radio" name="pm" value="all" ${sel.pm==='all'?'checked':''}> كل الصفحات</label>
     <label class="pchk"><input type="radio" name="pm" value="last" ${sel.pm==='last'?'checked':''}> آخر صفحة بس</label>
@@ -547,7 +555,7 @@ function renderPrint(){
       <button class="btn" data-out="share" style="background:#25d366;color:#04230f">🟢 واتساب</button>
     </div>
   </div>
-  <div class="card"><h3>👁️ معاينة</h3><div class="pv" id="pvBox"></div></div>`;
+  <details class="acc"><summary>👁️ معاينة الصفحات</summary><div class="accb"><div class="pv" id="pvBox"></div></div></details>`;
   $('#printBody').innerHTML = h;
   updPreview();
 }
@@ -746,8 +754,8 @@ function ordMove(from,to){ ordStart(); to=Math.max(0,Math.min(ORD.names.length-1
   setTimeout(()=>{ const el=document.querySelector(`#stuBody .sitem[data-i="${to}"]`); if(el) el.scrollIntoView({block:'center',behavior:'smooth'}); },30); }
 function renderStu(){
   const d=S.d;
-  let h = ocrCard();
-  h += `<div class="card"><h3>➕ إضافة طلاب لفصل ${esc(dispName(S.cls))}</h3><textarea id="addNames" placeholder="كل اسم في سطر"></textarea><button class="btn" id="addNamesGo" style="margin-top:8px">إضافة</button></div>`;
+  let h = `<details class="acc" ${OCR.imgs.some(Boolean)||OCR.res?'open':''}><summary>📸 أسماء من الكاميرا</summary><div class="accb">${ocrCard()}</div></details>`;
+  h += `<details class="acc"><summary>➕ إضافة أسماء بالكتابة</summary><div class="accb"><div class="card"><h3>➕</h3><textarea id="addNames" placeholder="كل اسم في سطر"></textarea><button class="btn" id="addNamesGo" style="margin-top:8px">إضافة</button></div></div></details>`;
   const P=ORD.cls===S.cls && ORD.names ? ORD : null;
   const names=P?P.names:d.names, late=new Set(P?P.late:(d.late||[]));
   h += `<div class="card"><h3>👥 الطلاب (${names.length})</h3>
@@ -763,7 +771,7 @@ function renderStu(){
         <button class="btn ghost" data-close="1">✖</button></div>`:''}</div>`).join('')
     + (P?`<div class="ordbar"><button class="btn" id="ordSave">💾 حفظ الترتيب</button><button class="btn ghost" id="ordCancel">إلغاء</button></div>`:'')
     + `</div>`;
-  if(d.weeks.length) h += `<div class="card"><h3>📅 الأسابيع</h3>` + d.weeks.map((w,k)=>`<div class="sline"><span class="nm">${esc(w)}</span><button class="btn red sm" data-delwk="${k}">🗑️</button></div>`).join('') + `</div>`;
+  if(d.weeks.length) h += `<details class="acc"><summary>📅 الأسابيع (${d.weeks.length})</summary><div class="accb">` + d.weeks.map((w,k)=>`<div class="sline"><span class="nm">${esc(w)}</span><button class="btn red sm" data-delwk="${k}">🗑️</button></div>`).join('') + `</div></details>`;
   $('#stuBody').innerHTML = h;
 }
 
@@ -820,7 +828,7 @@ $('#pkNext').onclick = ()=>{
 };
 
 /* ---------- أحداث ---------- */
-$('#tiles').onclick = e=>{ const t=e.target.closest('.tile'); if(!t) return; S.view=t.dataset.v; render(); };
+$('#tiles').onclick = e=>{ const t=e.target.closest('.tile'); if(!t) return; S.view=t.dataset.v; render(); scrollTo(0,0); };
 $('#clsChips').onclick = e=>{
   const c=e.target.closest('.chip'); if(!c) return;
   if(c.dataset.c==='+'){ openAddCls(); return; }
@@ -998,6 +1006,7 @@ async function checkUpd(show){
     if(has && !show && sessionStorage.getItem('autoUpd')!==String(j.v)){
       sessionStorage.setItem('autoUpd', String(j.v)); LS.set('justUpd', j);
       try{ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }catch(_){}
+      if(window.AndroidPrint && AndroidPrint.useLatest) AndroidPrint.useLatest();
       location.reload(); return;
     }
     if(has && show){ $('#updCard').innerHTML=`<b>🆕 الجديد في التحديث</b><ul>${(j.notes||[]).map(n=>`<li>${esc(n)}</li>`).join('')}</ul><div class="row"><button class="btn" id="updGo">حدّث دلوقتي</button><button class="btn ghost" id="updLater">بعدين</button></div>`; $('#updCard').classList.remove('hide'); }
@@ -1007,11 +1016,24 @@ async function checkUpd(show){
 $('#bUpd').onclick = ()=>checkUpd(true);
 $('#updCard').addEventListener('click', async e=>{
   if(e.target.id==='updLater') $('#updCard').classList.add('hide');
-  if(e.target.id==='updGo'){ LS.set('justUpd', NEWV); try{ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }catch(_){} location.reload(); }
+  if(e.target.id==='updGo'){ if(window.AndroidPrint && AndroidPrint.useLatest) AndroidPrint.useLatest(); LS.set('justUpd', NEWV); try{ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }catch(_){} location.reload(); }
 });
 (function afterUpd(){ const j=LS.get('justUpd',null); if(j && j.v===APP_V){ localStorage.removeItem('justUpd'); $('#updCard').innerHTML=`<b>✅ اتحدّث</b><ul>${(j.notes||[]).map(n=>`<li>${esc(n)}</li>`).join('')}</ul><button class="btn ghost sm" onclick="this.parentNode.classList.add('hide')">تمام</button>`; $('#updCard').classList.remove('hide'); } })();
 
-if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+const IN_APP = /GradesApp/.test(navigator.userAgent);
+if('serviceWorker' in navigator){
+  if(IN_APP) navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{}); // الـ APK فيه الملفات جواه
+  else navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+// زرار الرجوع في الموبايل
+window.appBack = function(){
+  if(!$('#pk').classList.contains('hide')){ closePicker(); return true; }
+  if(ORD.sel>=0){ ORD.sel=-1; renderStu(); return true; }
+  if(!$('#addClsCard').classList.contains('hide')){ $('#addClsCard').classList.add('hide'); return true; }
+  if(!$('#setCard').classList.contains('hide')){ $('#setCard').classList.add('hide'); return true; }
+  if(S.screen==='class'){ if(S.view!=='rasd'){ S.view='rasd'; render(); scrollTo(0,0); return true; } goHome(); return true; }
+  return false;
+};
 renderCls(); render(); qbar();
 if(S.api){ loadClasses(); flush(); }
 checkUpd(false);

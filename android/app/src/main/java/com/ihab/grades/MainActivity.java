@@ -20,6 +20,15 @@ import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
+import org.json.JSONObject;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -29,6 +38,47 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> fileCb;
     private Uri camUri;
     private static final int REQ_CAM = 77, REQ_PICK = 78;
+    private static final String HOST = "ihabali300-png.github.io", BASE = "/math-grades/";
+    // false = الملفات من جوه الـ APK (سريع ومن غير نت) — true = من النت لما يكون فيه نسخة أحدث
+    private volatile boolean useNet = false;
+
+    private static byte[] readAll(InputStream in) throws Exception {
+        ByteArrayOutputStream bo = new ByteArrayOutputStream();
+        byte[] buf = new byte[16384]; int n;
+        while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+        in.close();
+        return bo.toByteArray();
+    }
+    private static String mime(String p) {
+        if (p.endsWith(".html")) return "text/html";
+        if (p.endsWith(".js")) return "application/javascript";
+        if (p.endsWith(".json")) return "application/json";
+        if (p.endsWith(".png")) return "image/png";
+        if (p.endsWith(".css")) return "text/css";
+        return "application/octet-stream";
+    }
+    private WebResourceResponse wrap(String rel, byte[] data) {
+        WebResourceResponse r = new WebResourceResponse(mime(rel), "utf-8", new ByteArrayInputStream(data));
+        Map<String, String> h = new HashMap<>();
+        h.put("Cache-Control", "no-store");
+        h.put("Access-Control-Allow-Origin", "*");
+        r.setResponseHeaders(h);
+        return r;
+    }
+    private byte[] fromNet(String url, int timeout) {
+        try {
+            HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+            c.setConnectTimeout(timeout); c.setReadTimeout(timeout); c.setUseCaches(false);
+            if (c.getResponseCode() != 200) return null;
+            return readAll(c.getInputStream());
+        } catch (Exception e) { return null; }
+    }
+    private byte[] fromAsset(String rel) {
+        try { return readAll(getAssets().open("www/" + rel)); } catch (Exception e) { return null; }
+    }
+    private int verOf(byte[] json) {
+        try { return new JSONObject(new String(json, "UTF-8")).getInt("v"); } catch (Exception e) { return 0; }
+    }
 
     @Override
     protected void onCreate(Bundle b) {
@@ -42,6 +92,24 @@ public class MainActivity extends Activity {
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
         s.setUserAgentString(s.getUserAgentString() + " GradesApp");
         web.setWebViewClient(new WebViewClient() {
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) {
+                Uri u = r.getUrl();
+                if (!"GET".equals(r.getMethod()) || !HOST.equals(u.getHost())) return null;
+                String path = u.getPath();
+                if (path == null || !path.startsWith(BASE)) return null;
+                String rel = path.substring(BASE.length());
+                if (rel.isEmpty()) rel = "index.html";
+                boolean isVer = rel.equals("version.json");
+                if (useNet || isVer) {
+                    byte[] net = fromNet(u.toString(), isVer ? 4000 : 6000);
+                    if (net != null) return wrap(rel, net);
+                }
+                byte[] a = fromAsset(rel);
+                if (a != null) return wrap(rel, a);
+                return null;
+            }
+
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
                 Uri u = r.getUrl();
@@ -80,6 +148,9 @@ public class MainActivity extends Activity {
             }
         });
         web.addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public void useLatest() { useNet = true; }
+
             @JavascriptInterface
             public void print(final String name) {
                 runOnUiThread(() -> {
@@ -146,8 +217,16 @@ public class MainActivity extends Activity {
             }
         }, "AndroidPrint");
         setContentView(web);
-        if (b == null) web.clearCache(true); // دايماً يجيب آخر نسخة من الموقع
-        if (b != null) web.restoreState(b); else web.loadUrl(BuildConfig.APP_URL);
+        if (b == null) web.clearCache(true);
+        if (b != null) { web.restoreState(b); return; }
+        web.loadDataWithBaseURL(null, "<html><body style='margin:0;background:#0b120d;color:#a3e635;display:flex;height:100vh;align-items:center;justify-content:center;font:bold 24px sans-serif'>📘 سجل الدرجات</body></html>", "text/html", "utf-8", null);
+        new Thread(() -> {
+            // لو فيه نسخة أحدث على النت نستخدمها، غير كده نفتح من الملفات اللي جوه الـ APK
+            int local = verOf(fromAsset("version.json"));
+            byte[] remote = fromNet(BuildConfig.APP_URL + "version.json?" + System.currentTimeMillis(), 2500);
+            useNet = local == 0 || (remote != null && verOf(remote) > local);
+            runOnUiThread(() -> web.loadUrl(BuildConfig.APP_URL));
+        }).start();
     }
 
     @Override
@@ -166,5 +245,9 @@ public class MainActivity extends Activity {
     @Override protected void onSaveInstanceState(Bundle o) { super.onSaveInstanceState(o); web.saveState(o); }
 
     @Override
-    public void onBackPressed() { if (web.canGoBack()) web.goBack(); else super.onBackPressed(); }
+    public void onBackPressed() {
+        web.evaluateJavascript("(window.appBack && window.appBack()) ? '1' : '0'", v -> {
+            if (v == null || !v.contains("1")) finish();
+        });
+    }
 }
