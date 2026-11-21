@@ -107,25 +107,28 @@ textarea{min-height:120px;resize:vertical;line-height:1.7}
 .cell.ro{background:#1b2a12;border-color:#2f4a1c}
 .cell.ro .v{color:var(--acc)}
 .nav{display:flex;gap:8px;margin-top:12px}
-.nav .btn{flex:1}
+.nav .btn{flex:1;padding:14px 10px;font-size:16px}
+.nav .btn:first-child{flex:2}
 .pk{position:fixed;top:0;right:0;bottom:0;left:0;z-index:50;display:flex;align-items:flex-end;background:rgba(0,0,0,.35)}
 .pkbox{width:100%;max-width:760px;margin:auto auto 0;background:#101a13;border-top:2px solid var(--acc);border-radius:20px 20px 0 0;padding:10px 12px calc(14px + env(safe-area-inset-bottom))}
 .pkhead{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.pkhead b{flex:1;text-align:center;font-size:15px}
-.wheelw{position:relative;height:220px}
-.wheel{height:220px;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;-webkit-mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent)}
+.pkhead b{flex:1;text-align:center;font-size:16px}
+.pkbtns{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-top:10px}
+.pkbtns .btn{padding:15px 10px;font-size:17px;border-radius:14px}
+.wheelw{position:relative;height:260px}
+.wheel{height:260px;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;-webkit-mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent)}
 .wheel::-webkit-scrollbar{display:none}
-.wheel div{height:44px;line-height:44px;text-align:center;font-size:24px;scroll-snap-align:center;color:var(--mut)}
+.wheel div{height:52px;line-height:52px;text-align:center;font-size:26px;scroll-snap-align:center;color:var(--mut)}
 .wheel div.sel{color:var(--acc);font-weight:800;font-size:28px}
-.wheel .pad{height:88px;scroll-snap-align:none}
-.band{position:absolute;top:88px;left:10%;right:10%;height:44px;border-top:1px solid var(--acc);border-bottom:1px solid var(--acc);pointer-events:none;opacity:.5}
+.wheel .pad{height:104px;scroll-snap-align:none}
+.band{position:absolute;top:104px;left:10%;right:10%;height:52px;border-top:1px solid var(--acc);border-bottom:1px solid var(--acc);pointer-events:none;opacity:.5}
 .tbl{overflow:auto;border:1px solid var(--line);border-radius:14px;max-height:70vh}
 table{border-collapse:collapse;font-size:14px;min-width:100%}
 th,td{padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:center}
 th{position:sticky;top:0;background:var(--card2);z-index:2;font-size:13px}
 td.nm,th.nm{position:sticky;right:0;background:var(--card);text-align:right;z-index:1}
 th.nm{z-index:3;background:var(--card2)}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1b2a12;border:1px solid var(--acc);color:var(--txt);padding:10px 16px;border-radius:12px;z-index:60;font-size:14px;max-width:90%;text-align:center}
+.toast{position:fixed;top:120px;left:50%;transform:translateX(-50%);background:#1b2a12;border:1px solid var(--acc);color:var(--txt);padding:10px 16px;border-radius:12px;z-index:60;font-size:14px;max-width:90%;text-align:center}
 .toast.err{border-color:var(--red);background:#2a1212}
 .sline{display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid var(--line)}
 .sline:last-child{border-bottom:0}
@@ -236,20 +239,21 @@ th.nm{z-index:3;background:var(--card2)}
 <div id="printArea"></div>
 <div class="pk hide" id="pk">
   <div class="pkbox">
-    <div class="pkhead">
-      <button class="btn sm" id="pkOk">✓ تم</button>
-      <b id="pkT"></b>
-      <button class="btn ghost sm" id="pkNext">الخانة الجاية ‹</button>
-    </div>
+    <div class="pkhead"><b id="pkT"></b></div>
     <div class="wheelw"><div class="wheel" id="wheel"></div><div class="band"></div></div>
+    <div class="pkbtns">
+      <button class="btn" id="pkNext">الخانة الجاية ‹</button>
+      <button class="btn ghost" id="pkOk">✓ تم</button>
+    </div>
   </div>
 </div>
 
 <script>
-const APP_V = 23;
+const APP_V = 24;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
-const W = 12;                       // أعمدة الأسبوع في الشيت
+const W = 12;
+const IH = 52;                      // ارتفاع خانة العجلة                       // أعمدة الأسبوع في الشيت
 const ORDER = [0,2,4,1,3,5,8,9];    // ترتيب الخانات على الشاشة
 const LABEL = {0:'ك حصة • الدرس 1',2:'ك حصة • الدرس 2',4:'ك حصة • الدرس 3',1:'ك واجب • الدرس 1',3:'ك واجب • الدرس 2',5:'ك واجب • الدرس 3',8:'التقييم الأسبوعي',9:'السلوك والمواظبة'};
 const MAX = i => i===8 ? 10 : 5;
@@ -401,7 +405,7 @@ function genPicker(title, vals, labels, cur, onSet){
   $('#wheel').innerHTML='<div class="pad"></div>'+vals.map((v,n)=>`<div data-n="${n}">${labels[n]}</div>`).join('')+'<div class="pad"></div>';
   $('#pk').classList.remove('hide');
   let n=vals.indexOf(cur); if(n<0) n=0;
-  requestAnimationFrame(()=>{ $('#wheel').scrollTop=n*44; highlight(n); PK.n=n; });
+  requestAnimationFrame(()=>{ $('#wheel').scrollTop=n*IH; highlight(n); PK.n=n; });
 }
 function pickGrade(cur,onSet){ const v=[1,2,3,4,5,6]; genPicker('الصف',v,v.map(x=>'الصف '+GRADES[x]),cur,onSet); }
 function pickSec(cur,onSet){ const v=[1,2,3,4,5,6,7,8,9,10]; genPicker('الفصل',v,v.map(x=>'فصل '+x),cur,onSet); }
@@ -471,7 +475,7 @@ function stuCard(i){
         <div class="cell ${b[9]===''?'empty':''} ${S.cur===9?'cur':''}" data-cell="9"><small>سلوك ومواظبة /5</small><div class="v">${fmt(b[9])}</div></div>
         <div class="cell ro"><small>المجموع /25</small><div class="v">${fmt(b[10])}</div></div></div>
       <div class="lab"><b>📈 المتوسط التراكمي</b><span class="avg">${fmt(b[11])} / 25</span></div>
-      <div class="nav"><button class="btn ghost" data-prev="${i}">› السابق</button><button class="btn" data-next="${i}">التالي ‹</button></div>
+      <div class="nav"><button class="btn" data-next="${i}">التالي ‹</button><button class="btn ghost" data-prev="${i}">› السابق</button></div>
     </div>`;
   }
   return h + '</div>';
@@ -508,7 +512,7 @@ function termCard(i){
       <div class="g3">${c(0)}${c(1)}<div class="cell ro"><small>متوسط الشهرين /15</small><div class="v">${fmt(t[2])}</div></div></div>
       <div class="lab"><b>🧮 المجموع</b></div>
       <div class="g3"><div class="cell ro"><small>متوسط الأسابيع /25</small><div class="v">${fmt(t[3])}</div></div><div class="cell ro"><small>متوسط الشهرين /15</small><div class="v">${fmt(t[2])}</div></div><div class="cell ro" style="border-color:var(--acc)"><small>المجموع /40</small><div class="v">${fmt(t[4])}</div></div></div>
-      <div class="nav"><button class="btn ghost" data-tprev="${i}">› السابق</button><button class="btn" data-tnext="${i}">التالي ‹</button></div>
+      <div class="nav"><button class="btn" data-tnext="${i}">التالي ‹</button><button class="btn ghost" data-tprev="${i}">› السابق</button></div>
     </div>`;
   }
   return h+'</div>';
@@ -791,7 +795,7 @@ function openPicker(i, idx, mode){
   PK.n = -1;
   const auto5 = mode==='wk' && b[idx]==='' && idx===9;
   if(mode==='term' && b[idx]==='') n=0;
-  requestAnimationFrame(()=>{ $('#wheel').scrollTop = n*44; highlight(n); if(auto5) applyN(n); });
+  requestAnimationFrame(()=>{ $('#wheel').scrollTop = n*IH; highlight(n); if(auto5) applyN(n); });
   S.cur = idx; mode==='term' ? refreshT(i) : refreshCard(i);
 }
 function highlight(n){ document.querySelectorAll('#wheel div[data-n]').forEach(el=>el.classList.toggle('sel', +el.dataset.n===n)); }
@@ -806,16 +810,16 @@ function applyN(n){
 }
 let wT=null;
 $('#wheel').addEventListener('scroll', ()=>{
-  const n=Math.round($('#wheel').scrollTop/44); highlight(n);
-  clearTimeout(wT); wT=setTimeout(()=>applyN(Math.round($('#wheel').scrollTop/44)), 130);
+  const n=Math.round($('#wheel').scrollTop/IH); highlight(n);
+  clearTimeout(wT); wT=setTimeout(()=>applyN(Math.round($('#wheel').scrollTop/IH)), 130);
 });
-$('#wheel').addEventListener('click', e=>{ const el=e.target.closest('div[data-n]'); if(el){ $('#wheel').scrollTo({top:+el.dataset.n*44, behavior:'smooth'}); } });
-function closePicker(){ if(PK){ applyN(Math.round($('#wheel').scrollTop/44)); } $('#pk').classList.add('hide'); const i=PK&&PK.i, md=PK&&PK.mode; PK=null; S.cur=-1; if(i!=null) (md==='term'?refreshT(i):refreshCard(i)); }
+$('#wheel').addEventListener('click', e=>{ const el=e.target.closest('div[data-n]'); if(el){ $('#wheel').scrollTo({top:+el.dataset.n*IH, behavior:'smooth'}); } });
+function closePicker(){ if(PK){ applyN(Math.round($('#wheel').scrollTop/IH)); } $('#pk').classList.add('hide'); const i=PK&&PK.i, md=PK&&PK.mode; PK=null; S.cur=-1; if(i!=null) (md==='term'?refreshT(i):refreshCard(i)); }
 $('#pkOk').onclick = closePicker;
 $('#pk').addEventListener('click', e=>{ if(e.target.id==='pk') closePicker(); });
 $('#pkNext').onclick = ()=>{
   if(!PK) return;
-  if(PK.mode==='gen'){ closePicker(); return; } applyN(Math.round($('#wheel').scrollTop/44));
+  if(PK.mode==='gen'){ closePicker(); return; } applyN(Math.round($('#wheel').scrollTop/IH));
   const {i, idx}=PK, p=ORDER.indexOf(idx);
   if(PK.mode==='term'){
     if(idx===0) openPicker(i,1,'term');
