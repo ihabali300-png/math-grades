@@ -8,7 +8,7 @@ android {
         targetSdk 34
         versionCode 1
         versionName '1.0'
-        buildConfigField 'String', 'APP_URL', '"https://ihabali300-png.github.io/REPO_NAME/"'
+        buildConfigField 'String', 'APP_URL', '"https://ihabali300-png.github.io/math-grades/"'
     }
     buildFeatures { buildConfig true }
     signingConfigs {
