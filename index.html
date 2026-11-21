@@ -189,7 +189,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 5;
+const APP_V = 6;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwuEK8gV3b0rtd3eVTCpWLyOPNifvMuNz9nJ--hMvMnXUhqIY6MpU7py56699_bW-l1/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;                       // أعمدة الأسبوع في الشيت
@@ -435,11 +435,11 @@ function renderRes(){
   const d=S.d;
   if(!d.weeks.length && !d.names.length){ $('#resBody').innerHTML='<div class="card">مفيش بيانات لسه.</div>'; return; }
   let h = `<div class="card"><div class="row" style="justify-content:space-between"><b>📊 مجموع كل أسبوع من 25</b>${d.url?`<a class="btn ghost sm" href="${esc(d.url)}" target="_blank" style="text-decoration:none">📄 افتح الشيت</a>`:''}</div></div>`;
-  h += `<div class="tbl"><table><thead><tr><th class="nm">الطالب</th>${d.weeks.map(w=>`<th>${esc(w)}</th>`).join('')}<th>المتوسط التراكمي</th><th>التيرم /40</th></tr></thead><tbody>`;
+  h += `<div class="tbl"><table><thead><tr><th>م</th><th class="nm">الطالب</th>${d.weeks.map(w=>`<th>${esc(w)}</th>`).join('')}<th>المتوسط التراكمي</th><th>التيرم /40</th></tr></thead><tbody>`;
   d.names.forEach((n,i)=>{
     const t = d.weeks.map((_,k)=>blk(i,k)[10]);
     const av = d.weeks.length ? blk(i, d.weeks.length-1)[11] : '';
-    h += `<tr><td class="nm">${i+1}. ${esc(n)}</td>${t.map(v=>`<td>${fmt(v)}</td>`).join('')}<td style="color:var(--acc);font-weight:700">${fmt(av)}</td><td style="color:var(--yel);font-weight:700">${fmt(termCalc(i)[4])}</td></tr>`;
+    h += `<tr><td class="mut">${i+1}</td><td class="nm">${esc(n)}</td>${t.map(v=>`<td>${fmt(v)}</td>`).join('')}<td style="color:var(--acc);font-weight:700">${fmt(av)}</td><td style="color:var(--yel);font-weight:700">${fmt(termCalc(i)[4])}</td></tr>`;
   });
   h += '</tbody></table></div>';
   // كارت الطباعة
@@ -465,12 +465,12 @@ function buildPrint(){
   let out='';
   starts.forEach(k0=>{
     const ks=[0,1,2,3].map(j=>k0+j);
-    let t=`<div class="pp">${ppHead(P)}<table><colgroup><col style="width:60mm">${ks.map(()=>COLS.map(()=>'<col>').join('')).join('')}<col style="width:7mm"></colgroup>`;
-    t+=`<tr><th rowspan="3" class="eb" style="font-size:16pt">الاســــم</th>${ks.map(k=>`<th colspan="5" class="wk eb">${k<d.weeks.length?esc(d.weeks[k]):'الأسبوع'}</th>`).join('')}<th rowspan="3"></th></tr>`;
+    let t=`<div class="pp">${ppHead(P)}<table><colgroup><col style="width:8mm"><col style="width:58mm">${ks.map(()=>COLS.map(()=>'<col>').join('')).join('')}<col style="width:7mm"></colgroup>`;
+    t+=`<tr><th rowspan="3" style="font-size:12pt">م</th><th rowspan="3" class="eb" style="font-size:16pt">الاســــم</th>${ks.map(k=>`<th colspan="5" class="wk eb">${k<d.weeks.length?esc(d.weeks[k]):'الأسبوع'}</th>`).join('')}<th rowspan="3"></th></tr>`;
     t+=`<tr>${ks.map(()=>COLS.map((c,n)=>`<th class="vh ${n===4?'eb':''}"><span>${c[1]}</span></th>`).join('')).join('')}</tr>`;
     t+=`<tr class="hb">${ks.map(()=>COLS.map((c,n)=>`<td class="mx ${n===4?'eb':''}">${c[2]}</td>`).join('')).join('')}</tr>`;
     d.names.forEach((nm,i)=>{
-      t+=`<tr><td class="nm eb">${esc(nm)}</td>${ks.map(k=>{ const b=k<d.weeks.length?blk(i,k):null; return COLS.map((c,n)=>`<td class="${n===4?'eb':''}" ${n===4?'style="font-weight:700"':''}>${b&&b[c[0]]!==''?b[c[0]]:''}</td>`).join(''); }).join('')}<td></td></tr>`;
+      t+=`<tr><td>${i+1}</td><td class="nm eb">${esc(nm)}</td>${ks.map(k=>{ const b=k<d.weeks.length?blk(i,k):null; return COLS.map((c,n)=>`<td class="${n===4?'eb':''}" ${n===4?'style="font-weight:700"':''}>${b&&b[c[0]]!==''?b[c[0]]:''}</td>`).join(''); }).join('')}<td></td></tr>`;
     });
     out+=t+'</table></div>';
   });
