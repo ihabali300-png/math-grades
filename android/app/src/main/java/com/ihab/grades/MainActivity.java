@@ -17,6 +17,8 @@ import android.os.Bundle;
 import android.print.PrintAttributes;
 import android.print.PrintManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -24,6 +26,9 @@ import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
     private WebView web;
+    private ValueCallback<Uri[]> fileCb;
+    private Uri camUri;
+    private static final int REQ_CAM = 77, REQ_PICK = 78;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -42,6 +47,35 @@ public class MainActivity extends Activity {
                 Uri u = r.getUrl();
                 if (u.toString().startsWith(BuildConfig.APP_URL)) return false;
                 try { startActivity(new Intent(Intent.ACTION_VIEW, u)); } catch (Exception e) { }
+                return true;
+            }
+        });
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams p) {
+                if (fileCb != null) fileCb.onReceiveValue(null);
+                fileCb = cb;
+                try {
+                    if (p.isCaptureEnabled()) {
+                        File dir = new File(getCacheDir(), "pdf");
+                        dir.mkdirs();
+                        File f = new File(dir, "cam_" + System.currentTimeMillis() + ".jpg");
+                        camUri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".files", f);
+                        Intent i = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                        i.putExtra(MediaStore.EXTRA_OUTPUT, camUri);
+                        i.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        startActivityForResult(i, REQ_CAM);
+                    } else {
+                        Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                        i.addCategory(Intent.CATEGORY_OPENABLE);
+                        i.setType("image/*");
+                        startActivityForResult(Intent.createChooser(i, "اختار صورة"), REQ_PICK);
+                    }
+                } catch (Exception e) {
+                    fileCb.onReceiveValue(null);
+                    fileCb = null;
+                    Toast.makeText(MainActivity.this, "مقدرتش أفتح الكاميرا", Toast.LENGTH_LONG).show();
+                }
                 return true;
             }
         });
@@ -114,6 +148,19 @@ public class MainActivity extends Activity {
         setContentView(web);
         if (b == null) web.clearCache(true); // دايماً يجيب آخر نسخة من الموقع
         if (b != null) web.restoreState(b); else web.loadUrl(BuildConfig.APP_URL);
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (fileCb == null) return;
+        Uri[] out = null;
+        if (res == RESULT_OK) {
+            if (req == REQ_CAM && camUri != null) out = new Uri[]{camUri};
+            else if (req == REQ_PICK && data != null && data.getData() != null) out = new Uri[]{data.getData()};
+        }
+        fileCb.onReceiveValue(out);
+        fileCb = null;
     }
 
     @Override protected void onSaveInstanceState(Bundle o) { super.onSaveInstanceState(o); web.saveState(o); }

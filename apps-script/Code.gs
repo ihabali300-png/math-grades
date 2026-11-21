@@ -16,6 +16,39 @@ const COLORS = ['#e8f5e9','#e3f2fd'];
 
 function doGet() { return out({ ok: true, msg: 'grades api' }); }
 
+// شغّل الدالة دي مرة واحدة من المحرر عشان جوجل يطلب إذن Drive (لقراءة الصور)
+function authorize() {
+  DriveApp.getRootFolder();
+  UrlFetchApp.fetch('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest', { muteHttpExceptions: true });
+}
+
+// قراءة صورة بقارئ جوجل (OCR): بنرفعها كمستند جوجل مؤقت وناخد النص ونمسحه
+function ocrImage(b64, mime) {
+  const token = ScriptApp.getOAuthToken();
+  const boundary = 'grd' + Date.now();
+  const meta = JSON.stringify({ name: 'ocr-tmp-' + Date.now(), mimeType: 'application/vnd.google-apps.document' });
+  const head = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta +
+    '\r\n--' + boundary + '\r\nContent-Type: ' + (mime || 'image/jpeg') + '\r\n\r\n';
+  const tail = '\r\n--' + boundary + '--';
+  const payload = Utilities.newBlob(head).getBytes()
+    .concat(Utilities.base64Decode(b64))
+    .concat(Utilities.newBlob(tail).getBytes());
+  const up = UrlFetchApp.fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&ocrLanguage=ar', {
+    method: 'post', contentType: 'multipart/related; boundary=' + boundary, payload: payload,
+    headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true
+  });
+  if (up.getResponseCode() >= 300) throw new Error('قارئ جوجل رفض الصورة: ' + up.getContentText().slice(0, 150));
+  const id = JSON.parse(up.getContentText()).id;
+  try {
+    const ex = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + id + '/export?mimeType=text/plain', {
+      headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true
+    });
+    return ex.getContentText('UTF-8');
+  } finally {
+    try { DriveApp.getFileById(id).setTrashed(true); } catch (e) {}
+  }
+}
+
 function doPost(e) {
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
@@ -138,6 +171,8 @@ function findRow(sh, row, name) {
 
 const ACTIONS = {
   ping: () => ({}),
+
+  ocr: (ss, b) => ({ text: ocrImage(String(b.img || ''), b.mime) }),
 
   classes: (ss) => ({ classes: ss.getSheets().filter(isClass).map(s => s.getName()) }),
 

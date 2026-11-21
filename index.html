@@ -36,6 +36,18 @@ main{padding:12px;max-width:760px;margin:auto;padding-bottom:90px}
 .ccard .acts{display:flex;justify-content:center;gap:6px;margin-top:10px}
 .ccard.add{border-style:dashed;color:var(--acc);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:150px;font-size:16px;font-weight:700}
 .ccard input{margin-top:6px;text-align:center}
+.ocrs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+.oslot{background:var(--card2);border:1px dashed var(--line);border-radius:12px;padding:6px;text-align:center;font-size:12px}
+.oslot.ok{border-style:solid;border-color:var(--acc)}
+.oslot img{width:100%;height:70px;object-fit:cover;border-radius:8px;display:block;margin-bottom:4px}
+.oslot .ph{height:70px;display:grid;place-items:center;font-size:26px;color:var(--mut)}
+.oslot label{display:block;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 2px;margin-top:4px;cursor:pointer}
+.oslot input{display:none}
+.orow{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--line)}
+.orow input[type=text]{padding:6px 8px;flex:1}
+.orow input[type=checkbox]{width:20px;height:20px;accent-color:#a3e635;flex:none}
+.obadge{font-size:11px;padding:2px 6px;border-radius:6px;background:var(--card2);white-space:nowrap}
+.obadge.good{color:var(--acc)} .obadge.warn{color:var(--yel)} .obadge.dup{color:var(--red)}
 .pv{background:#fff;border-radius:10px;overflow:auto;padding:6px;max-height:60vh}
 .pv .pp{zoom:.42;margin-bottom:20px}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:9px 1px;text-align:center;font-size:12px;line-height:1.3}
@@ -211,7 +223,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 14;
+const APP_V = 15;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;                       // أعمدة الأسبوع في الشيت
@@ -638,9 +650,68 @@ $('#printBody').addEventListener('click', async e=>{
   }catch(er){ if(er && er.name!=='AbortError') toast(er.message||'حصل خطأ', true); }
   bt.disabled=false; bt.textContent=old;
 });
+/* ---------- أسماء من الكاميرا (قارئ جوجل) ---------- */
+const OCR={imgs:[null,null,null], res:null, busy:false};
+function ocrCard(){
+  const slot=i=>{ const im=OCR.imgs[i]; return `<div class="oslot ${im?'ok':''}">${im?`<img src="${im}">`:`<div class="ph">📄</div>`}<b>صورة ${i+1}</b>
+    <label>📷 كاميرا<input type="file" accept="image/*" capture="environment" data-oimg="${i}"></label>
+    <label>🖼️ معرض<input type="file" accept="image/*" data-oimg="${i}"></label></div>`; };
+  const n=OCR.imgs.filter(Boolean).length;
+  let h=`<div class="card"><h3>📸 أسماء من الكاميرا</h3>
+    <div class="mut">صوّر عمود الأسماء 3 مرات (الصورة معدولة وواضحة). الاسم بيتاخد لو اتقرا بنفس الشكل في صورتين على الأقل، والأسماء الموجودة مش بتتكرر.</div>
+    <div class="ocrs">${slot(0)}${slot(1)}${slot(2)}</div>
+    <button class="btn" id="ocrGo" style="width:100%" ${n?'':'disabled'}>${OCR.busy?'⏳ جوجل بيقرا…':`🔍 اقرأ الأسماء (${n} صورة)`}</button>`;
+  if(OCR.res){
+    const r=OCR.res, sel=r.items.filter(x=>x.on).length;
+    h+=`<div class="mut" style="margin:10px 0 4px">✅ ${r.items.filter(x=>x.st==='good').length} اسم متأكد منه • ⚠️ ${r.items.filter(x=>x.st==='warn').length} محتاج مراجعة • 🚫 ${r.items.filter(x=>x.st==='dup').length} موجود قبل كده</div>`;
+    h+=r.items.map((x,i)=>`<div class="orow"><input type="checkbox" data-oon="${i}" ${x.on?'checked':''}><input type="text" data-otx="${i}" value="${esc(x.t)}"><span class="obadge ${x.st}">${x.st==='dup'?'موجود':x.st==='good'?'✓ '+x.n+'/'+r.used:'⚠️ '+x.n+'/'+r.used}</span></div>`).join('');
+    h+=`<button class="btn" id="ocrAdd" style="width:100%;margin-top:10px">➕ إضافة المحدد (${sel})</button>`;
+  }
+  return h+'</div>';
+}
+function compressImg(file){
+  return new Promise((ok,no)=>{ const fr=new FileReader(); fr.onerror=()=>no(new Error('مقدرتش أفتح الصورة')); fr.onload=()=>{ const im=new Image(); im.onerror=()=>no(new Error('الصورة مش مدعومة')); im.onload=()=>{
+    const M=2000, sc=Math.min(1, M/Math.max(im.width,im.height)); const c=document.createElement('canvas'); c.width=Math.round(im.width*sc); c.height=Math.round(im.height*sc);
+    c.getContext('2d').drawImage(im,0,0,c.width,c.height); ok(c.toDataURL('image/jpeg',0.85)); }; im.src=fr.result; }; fr.readAsDataURL(file); });
+}
+const AR_NORM=t=>t.replace(/[ً-ْـ]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ؤ/g,'و').replace(/ئ/g,'ي').replace(/\s+/g,' ').trim();
+const HDR_WORDS=/الاسم|الاسـ|مدرس|فصل|الاسبوع|الأسبوع|رصد|درجات|المجموع|واجب|حصه|حصة|سلوك|تقييم|ماده|مادة|مديري|اداره|إدارة|التعليم|الابتدائي|المواظب|مواظب/;
+function ocrLines(text){
+  const out=[];
+  String(text).split(/\r?\n/).forEach(l=>{
+    let t=l.replace(/[^ء-ي٠-٩\s]/g,' ').replace(/[٠-٩]/g,' ').replace(/\s+/g,' ').trim();
+    const w=t.split(' ').filter(x=>x.length>1);
+    t=w.join(' ');
+    if(w.length<2 || w.length>7 || t.replace(/\s/g,'').length<6) return;
+    if(HDR_WORDS.test(t)) return;
+    out.push(t);
+  });
+  return out;
+}
+function lev(a,b){ const m=a.length,n=b.length; if(!m) return n; if(!n) return m; let p=Array.from({length:n+1},(_,j)=>j);
+  for(let i=1;i<=m;i++){ const c=[i]; for(let j=1;j<=n;j++) c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1)); p=c; } return p[n]; }
+const simR=(a,b)=>{ a=AR_NORM(a); b=AR_NORM(b); return 1-lev(a,b)/Math.max(a.length,b.length,1); };
+function ocrMatch(texts){
+  const used=texts.length, need=used>=3?2:used, cl=[];
+  texts.forEach((tx,pi)=>{ const ls=ocrLines(tx); ls.forEach((t,li)=>{
+    let best=null, bs=0; cl.forEach(c=>{ const r=simR(c.v[0].t,t); if(r>bs){ bs=r; best=c; } });
+    const v={t,pi,pos:li/Math.max(ls.length,1)};
+    if(best && bs>=0.82) { best.v.push(v); best.ph.add(pi); } else cl.push({v:[v],ph:new Set([pi])});
+  }); });
+  const items=cl.map(c=>{
+    const cnt={}; c.v.forEach(v=>cnt[v.t]=(cnt[v.t]||0)+1);
+    const t=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]||b.length-a.length)[0];
+    const pos=c.v.reduce((a,v)=>a+v.pos,0)/c.v.length;
+    const dup=S.d.names.some(n=>simR(n,t)>=0.88);
+    const st=dup?'dup':(c.ph.size>=need?'good':'warn');
+    return {t, n:c.ph.size, pos, st, on:st==='good'};
+  }).sort((a,b)=>a.pos-b.pos);
+  return {used, items};
+}
 function renderStu(){
   const d=S.d;
-  let h = `<div class="card"><h3>➕ إضافة طلاب لفصل ${esc(dispName(S.cls))}</h3><textarea id="addNames" placeholder="كل اسم في سطر"></textarea><button class="btn" id="addNamesGo" style="margin-top:8px">إضافة</button></div>`;
+  let h = ocrCard();
+  h += `<div class="card"><h3>➕ إضافة طلاب لفصل ${esc(dispName(S.cls))}</h3><textarea id="addNames" placeholder="كل اسم في سطر"></textarea><button class="btn" id="addNamesGo" style="margin-top:8px">إضافة</button></div>`;
   h += `<div class="card"><h3>👥 الطلاب (${d.names.length})</h3>` + d.names.map((n,i)=>`<div class="sline" data-i="${i}"><span class="mut">${i+1}</span><span class="nm">${esc(n)}</span><button class="btn ghost sm" data-ren="${i}">✏️</button><button class="btn red sm" data-del="${i}">🗑️</button></div>`).join('') + `</div>`;
   if(d.weeks.length) h += `<div class="card"><h3>📅 الأسابيع</h3>` + d.weeks.map((w,k)=>`<div class="sline"><span class="nm">${esc(w)}</span><button class="btn red sm" data-delwk="${k}">🗑️</button></div>`).join('') + `</div>`;
   $('#stuBody').innerHTML = h;
@@ -763,8 +834,36 @@ $('#termBody').addEventListener('click', e=>{
 });
 $('#termBody').addEventListener('input', e=>{ if(e.target.id==='tsrch'){ const q=e.target.value.trim(); document.querySelectorAll('#termBody .st').forEach(el=>el.classList.toggle('hide', q && !el.dataset.name.includes(q))); } });
 $('#rasdBody').addEventListener('input', e=>{ if(e.target.id==='srch'){ S.search=e.target.value; applySearch(); } });
+$('#stuBody').addEventListener('change', async e=>{
+  const t=e.target;
+  if(t.dataset.oimg!=null && t.files && t.files[0]){
+    try{ OCR.imgs[+t.dataset.oimg]=await compressImg(t.files[0]); OCR.res=null; renderStu(); }catch(er){ toast(er.message,true); }
+  }
+  if(t.dataset.oon!=null && OCR.res){ OCR.res.items[+t.dataset.oon].on=t.checked; const b=$('#ocrAdd'); if(b) b.textContent=`➕ إضافة المحدد (${OCR.res.items.filter(x=>x.on).length})`; }
+});
+$('#stuBody').addEventListener('input', e=>{ const t=e.target; if(t.dataset.otx!=null && OCR.res) OCR.res.items[+t.dataset.otx].t=t.value; });
 $('#stuBody').addEventListener('click', async e=>{
   const t=e.target;
+  if(t.id==='ocrGo' && !OCR.busy){
+    const imgs=OCR.imgs.filter(Boolean); if(!imgs.length) return;
+    OCR.busy=true; renderStu();
+    try{
+      const texts=[];
+      for(let i=0;i<imgs.length;i++){ const b=$('#ocrGo'); if(b) b.textContent=`⏳ جوجل بيقرا صورة ${i+1} من ${imgs.length}…`;
+        const j=await api('ocr',{img:imgs[i].split(',')[1], mime:'image/jpeg'}); texts.push(j.text||''); }
+      OCR.res=ocrMatch(texts);
+      if(!OCR.res.items.length) toast('مالقيتش أسماء — صوّر عمود الأسماء أقرب ومعدول', true);
+    }catch(er){ toast(/unknown action|قديم/.test(er.message)?'كود الشيت محتاج يتحدّث لقارئ جوجل':er.message, true); }
+    OCR.busy=false; renderStu(); return;
+  }
+  if(t.id==='ocrAdd' && OCR.res){
+    const names=[...new Set(OCR.res.items.filter(x=>x.on).map(x=>x.t.trim()).filter(Boolean))].filter(n=>!S.d.names.some(m=>AR_NORM(m)===AR_NORM(n)));
+    if(!names.length) return toast('مفيش أسماء جديدة محددة', true);
+    t.disabled=true;
+    try{ await api('addStudents',{cls:S.cls,names}); OCR.imgs=[null,null,null]; OCR.res=null; await loadClass(); toast(`✅ اتضاف ${names.length} طالب`); }
+    catch(er){ toast(er.message,true); t.disabled=false; }
+    return;
+  }
   if(t.id==='addNamesGo'){
     const names=$('#addNames').value.split('\n').map(s=>s.trim()).filter(Boolean); if(!names.length) return;
     t.disabled=true; try{ await api('addStudents',{cls:S.cls,names}); await loadClass(); toast(`✅ اتضاف ${names.length} طالب`); }catch(er){ toast(er.message,true); } t.disabled=false; return;
