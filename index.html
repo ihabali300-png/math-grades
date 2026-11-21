@@ -57,6 +57,10 @@ main{padding:12px;max-width:760px;margin:auto;padding-bottom:90px}
 .late{font-size:11px;color:var(--yel);background:#2a2610;border-radius:6px;padding:1px 6px;margin-inline-start:6px;white-space:nowrap}
 .ordbar{position:sticky;bottom:10px;z-index:15;display:flex;gap:8px;background:#101a13;border:1px solid var(--acc);border-radius:14px;padding:8px;margin-top:10px}
 .ordbar .btn{flex:1}
+.cpick{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:stretch;margin:6px 0}
+.cpick .cell{cursor:pointer}
+.cpick .cell .v{font-size:17px}
+.cpick .prev{display:grid;place-items:center;background:#1b2a12;border:1px solid #2f4a1c;border-radius:12px;font-size:26px;font-weight:800;color:var(--acc)}
 .pv{background:#fff;border-radius:10px;overflow:auto;padding:6px;max-height:60vh}
 .pv .pp{zoom:.42;margin-bottom:20px}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:9px 1px;text-align:center;font-size:12px;line-height:1.3}
@@ -170,12 +174,13 @@ th.nm{z-index:3;background:var(--card2)}
 
   <div class="card hide" id="addClsCard">
     <h3>➕ فصل جديد</h3>
-    <input type="text" id="newCls" dir="auto" placeholder="اسم الفصل، مثال: 3/3">
+    <input type="hidden" id="newCls" value="3/1">
+    <div id="newClsPick"></div>
     <div class="mut" style="margin:8px 0 4px">أسماء الطلاب، كل اسم في سطر</div>
     <textarea id="newClsNames" placeholder="احمد ابراهيم على احمد"></textarea>
     <div class="row" style="margin-top:8px">
       <button class="btn" id="addClsGo">إنشاء الفصل</button>
-      <button class="btn ghost sm" id="seed33">📋 أسماء فصل 3/3 من الدفتر</button>
+      <button class="btn ghost sm" id="seed33">📋 أسماء فصل 3/2 من الدفتر</button>
       <button class="btn ghost sm" id="addClsClose">قفل</button>
     </div>
   </div>
@@ -232,7 +237,7 @@ th.nm{z-index:3;background:var(--card2)}
 </div>
 
 <script>
-const APP_V = 18;
+const APP_V = 19;
 const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxEt1BuroFKShP5jgVcY9clBpuNiXINiMPf-T9ePY6o0lVeBzWLIXFZY7_C19kc3uEA/exec';
 const TOKEN = 'hana-math-2027';
 const W = 12;                       // أعمدة الأسبوع في الشيت
@@ -371,11 +376,27 @@ function plainName(c){ return String(c).replace(/-/g,'/'); }
 function dispName(c){ return '\u2066'+plainName(c)+'\u2069'; } // عزل الاتجاه عشان 2/3 ماتتقلبش
 function renderHome(){
   const g=$('#cgrid'); if(!g) return;
-  g.innerHTML = S.classes.map(c=>{ const d=LS.get('d3_'+c,null); const meta = d ? `${d.names.length} طالب • ${d.weeks.length} أسبوع` : 'دوس للفتح';
+  g.innerHTML = S.classes.map(c=>{ const d=LS.get('d3_'+c,null); const meta = (clsLabel(c)?clsLabel(c)+'<br>':'') + (d ? `${d.names.length} طالب • ${d.weeks.length} أسبوع` : 'دوس للفتح');
     return `<div class="ccard" data-c="${esc(c)}"><button class="open" data-open="${esc(c)}"><div class="big">📘</div><div class="cn">فصل ${esc(dispName(c))}</div><div class="cm">${meta}</div></button>
       <div class="acts"><button class="btn ghost sm" data-ren-c="${esc(c)}">✏️ تعديل</button><button class="btn red sm" data-del-c="${esc(c)}">🗑️ حذف</button></div></div>`; }).join('')
     + `<button class="ccard add" id="homeAdd"><span style="font-size:34px">＋</span>فصل جديد</button>`;
 }
+const GRADES=['','الأول','الثاني','الثالث','الرابع','الخامس','السادس'];
+function parseCls(c){ const m=String(c||'').match(/^\s*(\d+)\s*[\/-]\s*(\d+)\s*$/); return m?{g:+m[1],s:+m[2]}:null; }
+function clsLabel(c){ const p=parseCls(c); return p ? `الصف ${GRADES[p.g]||p.g} • فصل ${p.s}` : ''; }
+function cpickHTML(g,s){ return `<div class="cpick"><div class="cell" data-cg="1"><small>الصف</small><div class="v">${GRADES[g]||g}</div></div><div class="cell" data-cs="1"><small>الفصل</small><div class="v">${s}</div></div><div class="prev">\u2066${g}/${s}\u2069</div></div>`; }
+function genPicker(title, vals, labels, cur, onSet){
+  PK={mode:'gen', vals, onSet, i:null, n:-1};
+  $('#pkT').textContent=title;
+  $('#wheel').innerHTML='<div class="pad"></div>'+vals.map((v,n)=>`<div data-n="${n}">${labels[n]}</div>`).join('')+'<div class="pad"></div>';
+  $('#pk').classList.remove('hide');
+  let n=vals.indexOf(cur); if(n<0) n=0;
+  requestAnimationFrame(()=>{ $('#wheel').scrollTop=n*44; highlight(n); PK.n=n; });
+}
+function pickGrade(cur,onSet){ const v=[1,2,3,4,5,6]; genPicker('الصف',v,v.map(x=>'الصف '+GRADES[x]),cur,onSet); }
+function pickSec(cur,onSet){ const v=[1,2,3,4,5,6,7,8,9,10]; genPicker('الفصل',v,v.map(x=>'فصل '+x),cur,onSet); }
+const NEWCLS={g:3,s:1};
+function drawNewCls(){ $('#newClsPick').innerHTML=cpickHTML(NEWCLS.g,NEWCLS.s); $('#newCls').value=NEWCLS.g+'/'+NEWCLS.s; }
 function goHome(){ S.screen='home'; S.open=-1; S.topen=-1; $('#clsScreen').classList.add('hide'); $('#home').classList.remove('hide'); $('#clsChips').classList.add('hide'); $('#bHome').classList.add('hide'); $('#hTitle').textContent='📘 سجل الدرجات'; renderHome(); scrollTo(0,0); }
 function openClass(c){ ORD.names=null; ORD.sel=-1; S.cls=c; LS.set('cls',c); S.screen='class'; S.open=-1; S.topen=-1; S.search=''; $('#home').classList.add('hide'); $('#clsScreen').classList.remove('hide'); $('#clsChips').classList.remove('hide'); $('#bHome').classList.remove('hide'); $('#hTitle').textContent='📘 فصل '+dispName(c); renderCls(); render(); loadClass(); scrollTo(0,0); }
 async function loadClass(){
@@ -767,6 +788,7 @@ function highlight(n){ document.querySelectorAll('#wheel div[data-n]').forEach(e
 function applyN(n){
   if(!PK || n===PK.n) return; PK.n=n;
   const {i, idx, vals, mode}=PK, v = vals[n];
+  if(mode==='gen'){ PK.onSet(v); return; }
   if(mode==='term'){ const t=trm(i); if(t[idx]===v) return; t[idx]=v; termCalc(i); cacheD(); scheduleTerm(i); refreshT(i); return; }
   const b=blk(i,S.wk);
   if(b[idx]===v) return;
@@ -782,7 +804,8 @@ function closePicker(){ if(PK){ applyN(Math.round($('#wheel').scrollTop/44)); } 
 $('#pkOk').onclick = closePicker;
 $('#pk').addEventListener('click', e=>{ if(e.target.id==='pk') closePicker(); });
 $('#pkNext').onclick = ()=>{
-  if(!PK) return; applyN(Math.round($('#wheel').scrollTop/44));
+  if(!PK) return;
+  if(PK.mode==='gen'){ closePicker(); return; } applyN(Math.round($('#wheel').scrollTop/44));
   const {i, idx}=PK, p=ORDER.indexOf(idx);
   if(PK.mode==='term'){
     if(idx===0) openPicker(i,1,'term');
@@ -806,12 +829,15 @@ $('#bHome').onclick = goHome;
 $('#cgrid').addEventListener('click', async e=>{
   const t=e.target;
   if(t.closest('#homeAdd')){ openAddCls(); scrollTo(0,0); return; }
-  const op=t.closest('[data-open]'); if(op){ openClass(op.dataset.open); return; }
+  const cg=t.closest('[data-cg]'), cs=t.closest('[data-cs]');
+  if(cg||cs){ const card=t.closest('.ccard'); const redraw=()=>{ card.querySelector('.cn').innerHTML=cpickHTML(+card.dataset.g,+card.dataset.s); };
+    if(cg) pickGrade(+card.dataset.g, v=>{ card.dataset.g=v; redraw(); }); else pickSec(+card.dataset.s, v=>{ card.dataset.s=v; redraw(); }); return; }
+  const op=t.closest('[data-open]'); if(op && !op.querySelector('.cpick')){ openClass(op.dataset.open); return; }
   const rn=t.closest('[data-ren-c]');
   if(rn){
     const c=rn.dataset.renC, card=rn.closest('.ccard');
-    if(!rn.dataset.save){ card.querySelector('.cn').innerHTML=`<input type="text" dir="ltr" value="${esc(plainName(c))}">`; rn.textContent='💾 حفظ'; rn.dataset.save=1; card.querySelector('input').focus(); return; }
-    const nn=card.querySelector('input').value.trim(); if(!nn) return;
+    if(!rn.dataset.save){ const p=parseCls(c)||{g:3,s:1}; card.dataset.g=p.g; card.dataset.s=p.s; card.querySelector('.cn').innerHTML=cpickHTML(p.g,p.s); card.querySelector('.cm').textContent='اختار الصف والفصل'; rn.textContent='💾 حفظ'; rn.dataset.save=1; return; }
+    const nn=card.dataset.g+'/'+card.dataset.s;
     rn.disabled=true;
     try{ const j=await api('renameClass',{cls:c,name:nn}); const old=LS.get('d3_'+c,null); if(old){ LS.set('d3_'+j.cls,old); localStorage.removeItem('d3_'+c); } S.q.forEach(x=>{ if(x.cls===c) x.cls=j.cls; }); LS.set('q',S.q); if(S.cls===c) S.cls=j.cls; await loadClasses(); toast('✅ اتعدّل اسم الفصل'); }
     catch(er){ toast(er.message,true); rn.disabled=false; }
@@ -940,9 +966,13 @@ $('#stuBody').addEventListener('click', async e=>{
     t.disabled=true; try{ await api('deleteWeek',{cls:S.cls,week:k,label:S.d.weeks[k]}); LS.set('wk_'+S.cls, 0); await loadClass(); toast('🗑️ الأسبوع اتمسح'); }catch(er){ toast(er.message,true); t.disabled=false; }
   }
 });
-function openAddCls(first){ $('#addClsCard').classList.remove('hide'); if(first && !$('#newCls').value){ $('#newCls').value='3/3'; $('#newClsNames').value=SEED33; } }
+function openAddCls(first){ $('#addClsCard').classList.remove('hide'); drawNewCls(); if(first && !$('#newClsNames').value){ NEWCLS.g=3; NEWCLS.s=2; drawNewCls(); $('#newClsNames').value=SEED33; } }
+$('#newClsPick').addEventListener('click', e=>{
+  if(e.target.closest('[data-cg]')) pickGrade(NEWCLS.g, v=>{ NEWCLS.g=v; drawNewCls(); });
+  if(e.target.closest('[data-cs]')) pickSec(NEWCLS.s, v=>{ NEWCLS.s=v; drawNewCls(); });
+});
 $('#addClsClose').onclick = ()=>$('#addClsCard').classList.add('hide');
-$('#seed33').onclick = ()=>{ $('#newCls').value='3/3'; $('#newClsNames').value=SEED33; toast('راجع الأسماء قبل الإنشاء'); };
+$('#seed33').onclick = ()=>{ NEWCLS.g=3; NEWCLS.s=2; drawNewCls(); $('#newClsNames').value=SEED33; toast('راجع الأسماء قبل الإنشاء'); };
 $('#addClsGo').onclick = async ()=>{
   const name=$('#newCls').value.trim(); const names=$('#newClsNames').value.split('\n').map(s=>s.trim()).filter(Boolean);
   if(!name) return toast('اكتب اسم الفصل', true);
