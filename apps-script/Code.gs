@@ -1,0 +1,171 @@
+/**
+ * سجل الدرجات — كود الشيت (Google Apps Script)
+ * كل فصل = تاب لوحده. كل أسبوع = 11 عمود:
+ * د1 ك حصة | د1 ك واجب | د2 ك حصة | د2 ك واجب | د3 ك حصة | د3 ك واجب |
+ * متوسط ك حصة | متوسط ك واجب | تقييم أسبوعي | سلوك ومواظبة | المجموع
+ * المتوسطات والمجموع معادلات جوه الشيت (بتتحسب لوحدها).
+ */
+const TOKEN = 'hana-math-2027';
+const W = 11, HDR = 2, FIRST_COL = 3;
+const SUB = ['د1 ك حصة','د1 ك واجب','د2 ك حصة','د2 ك واجب','د3 ك حصة','د3 ك واجب','متوسط ك حصة','متوسط ك واجب','تقييم أسبوعي /10','سلوك ومواظبة /5','المجموع /25'];
+const COLORS = ['#e8f5e9','#e3f2fd'];
+
+function doGet() { return out({ ok: true, msg: 'grades api' }); }
+
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const b = JSON.parse(e.postData.contents);
+    if (b.token !== TOKEN) return out({ ok: false, error: 'bad token' });
+    const f = ACTIONS[b.action];
+    if (!f) return out({ ok: false, error: 'unknown action' });
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    return out(Object.assign({ ok: true }, f(ss, b) || {}));
+  } catch (err) {
+    return out({ ok: false, error: String(err && err.message || err) });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function out(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
+
+function isClass(sh) { return sh.getRange(HDR, 1, 1, 2).getDisplayValues()[0].join('|') === 'م|الاسم'; }
+function tabName(n) { return String(n).trim().replace(/[\\\/\?\*\[\]:]/g, '-'); }
+function getSh(ss, name) {
+  const sh = ss.getSheetByName(tabName(name));
+  if (!sh || !isClass(sh)) throw new Error('الفصل مش موجود: ' + name);
+  return sh;
+}
+function nStudents(sh) { return Math.max(0, sh.getLastRow() - HDR); }
+function nWeeks(sh) { return Math.max(0, Math.floor((sh.getLastColumn() - 2) / W)); }
+function startCol(k) { return FIRST_COL + k * W; }
+
+function setFormulas(sh, row, count, k) {
+  if (count <= 0) return;
+  const s = startCol(k);
+  // المتوسط من الدروس اللي اتحطلها درجة بس، مقرّب لرقم عشري واحد
+  const avg = '=IF(COUNT(RC[-6],RC[-4],RC[-2])=0,"",ROUND(AVERAGE(RC[-6],RC[-4],RC[-2]),1))';
+  sh.getRange(row, s + 6, count, 2).setFormulaR1C1(avg);
+  sh.getRange(row, s + 10, count, 1).setFormulaR1C1('=IF(COUNT(RC[-4]:RC[-1])=0,"",ROUND(SUM(RC[-4]:RC[-1]),1))');
+}
+
+function renumber(sh) {
+  const n = nStudents(sh);
+  if (n) sh.getRange(HDR + 1, 1, n, 1).setValues(Array.from({ length: n }, (_, i) => [i + 1]));
+}
+
+function findRow(sh, row, name) {
+  const n = nStudents(sh);
+  const names = n ? sh.getRange(HDR + 1, 2, n, 1).getDisplayValues().map(r => r[0]) : [];
+  if (names[row] === name) return HDR + 1 + row;
+  const i = names.indexOf(name);
+  if (i < 0) throw new Error('الطالب مش موجود: ' + name);
+  return HDR + 1 + i;
+}
+
+const ACTIONS = {
+  ping: () => ({}),
+
+  classes: (ss) => ({ classes: ss.getSheets().filter(isClass).map(s => s.getName()) }),
+
+  addClass: (ss, b) => {
+    const name = tabName(b.name);
+    if (!name) throw new Error('اكتب اسم الفصل');
+    if (ss.getSheetByName(name)) throw new Error('فيه فصل بنفس الاسم');
+    const sh = ss.insertSheet(name);
+    sh.setRightToLeft(true);
+    sh.getRange(1, 1, 1, 2).merge().setValue('📘 فصل ' + name).setFontWeight('bold').setHorizontalAlignment('center');
+    sh.getRange(HDR, 1, 1, 2).setValues([['م', 'الاسم']]).setFontWeight('bold').setBackground('#cfd8dc');
+    sh.setColumnWidth(1, 35); sh.setColumnWidth(2, 230);
+    sh.setFrozenRows(HDR); sh.setFrozenColumns(2);
+    const names = (b.names || []).map(String).filter(Boolean);
+    if (names.length) sh.getRange(HDR + 1, 1, names.length, 2).setValues(names.map((n, i) => [i + 1, n]));
+    if (sh.getMaxColumns() > 2) sh.deleteColumns(3, sh.getMaxColumns() - 2);
+    return { cls: name };
+  },
+
+  getClass: (ss, b) => {
+    const sh = getSh(ss, b.cls);
+    const n = nStudents(sh), k = nWeeks(sh);
+    const names = n ? sh.getRange(HDR + 1, 2, n, 1).getDisplayValues().map(r => r[0]) : [];
+    const weeks = [];
+    for (let i = 0; i < k; i++) weeks.push(sh.getRange(1, startCol(i)).getDisplayValue());
+    const vals = (n && k) ? sh.getRange(HDR + 1, FIRST_COL, n, k * W).getValues()
+      .map(r => r.map(v => (v === '' || v === null) ? '' : (typeof v === 'number' ? Math.round(v * 100) / 100 : v))) : names.map(() => []);
+    return { names, weeks, vals, url: ss.getUrl() + '#gid=' + sh.getSheetId() };
+  },
+
+  addWeek: (ss, b) => {
+    const sh = getSh(ss, b.cls);
+    const k = nWeeks(sh), s = startCol(k), n = nStudents(sh);
+    if (sh.getMaxColumns() < s + W - 1) sh.insertColumnsAfter(sh.getMaxColumns(), s + W - 1 - sh.getMaxColumns());
+    const color = COLORS[k % 2];
+    sh.getRange(1, s, 1, W).merge().setValue(String(b.label || ('الأسبوع ' + (k + 1))))
+      .setFontWeight('bold').setHorizontalAlignment('center').setBackground('#a5d6a7');
+    sh.getRange(HDR, s, 1, W).setValues([SUB]).setFontWeight('bold').setWrap(true)
+      .setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground(color);
+    sh.getRange(HDR, s + 6, 1, 2).setBackground('#fff9c4');
+    sh.getRange(HDR, s + 10, 1, 1).setBackground('#ffe082');
+    for (let c = s; c < s + W; c++) sh.setColumnWidth(c, 62);
+    if (n) {
+      sh.getRange(HDR + 1, s, n, W).setHorizontalAlignment('center');
+      sh.getRange(HDR + 1, s + 10, n, 1).setFontWeight('bold');
+      setFormulas(sh, HDR + 1, n, k);
+    }
+    sh.getRange(1, s, Math.max(HDR + n, HDR), W).setBorder(true, true, true, true, null, null, '#455a64', SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+    return { week: k };
+  },
+
+  deleteWeek: (ss, b) => {
+    const sh = getSh(ss, b.cls);
+    const k = Number(b.week);
+    if (!(k >= 0 && k < nWeeks(sh))) throw new Error('الأسبوع مش موجود');
+    if (b.label && sh.getRange(1, startCol(k)).getDisplayValue() !== b.label) throw new Error('الشيت اتغير — حدّث الصفحة');
+    sh.deleteColumns(startCol(k), W);
+    return {};
+  },
+
+  save: (ss, b) => {
+    const sh = getSh(ss, b.cls);
+    const r = findRow(sh, Number(b.row), String(b.name));
+    const k = Number(b.week);
+    if (!(k >= 0 && k < nWeeks(sh))) throw new Error('الأسبوع مش موجود');
+    const s = startCol(k);
+    const v = (b.vals || []).map(x => (x === '' || x === null || x === undefined) ? '' : Number(x));
+    sh.getRange(r, s, 1, 6).setValues([v.slice(0, 6)]);
+    sh.getRange(r, s + 8, 1, 2).setValues([[v[6], v[7]]]);
+    return {};
+  },
+
+  addStudents: (ss, b) => {
+    const sh = getSh(ss, b.cls);
+    const names = (b.names || []).map(String).map(s => s.trim()).filter(Boolean);
+    if (!names.length) return {};
+    const n = nStudents(sh), row = HDR + 1 + n;
+    sh.getRange(row, 1, names.length, 2).setValues(names.map((nm, i) => [n + i + 1, nm]));
+    const k = nWeeks(sh);
+    for (let i = 0; i < k; i++) {
+      setFormulas(sh, row, names.length, i);
+      sh.getRange(row, startCol(i), names.length, W).setHorizontalAlignment('center');
+      sh.getRange(row, startCol(i) + 10, names.length, 1).setFontWeight('bold');
+    }
+    return {};
+  },
+
+  renameStudent: (ss, b) => {
+    const sh = getSh(ss, b.cls);
+    const r = findRow(sh, Number(b.row), String(b.old));
+    sh.getRange(r, 2).setValue(String(b.name).trim());
+    return {};
+  },
+
+  deleteStudent: (ss, b) => {
+    const sh = getSh(ss, b.cls);
+    const r = findRow(sh, Number(b.row), String(b.name));
+    sh.deleteRow(r);
+    renumber(sh);
+    return {};
+  }
+};

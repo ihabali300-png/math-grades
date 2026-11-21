@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b120d">
+<title>سجل الدرجات</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--bg:#0b120d;--card:#121c15;--card2:#18251c;--line:#24352a;--txt:#e7f0e9;--mut:#8fa596;--acc:#a3e635;--red:#f87171;--yel:#facc15}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,"Segoe UI",Tahoma,sans-serif;font-size:16px}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.hide{display:none!important}
+header{position:sticky;top:0;z-index:20;background:rgba(11,18,13,.96);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:10px 12px 8px}
+.top{display:flex;align-items:center;gap:8px}
+.top h1{font-size:19px;margin:0;flex:1}
+.ib{position:relative;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:19px;display:grid;place-items:center}
+.badge{position:absolute;top:-4px;left:-4px;background:var(--red);color:#fff;font-size:11px;font-weight:700;width:17px;height:17px;border-radius:4px;display:grid;place-items:center}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:14px;white-space:nowrap}
+.chip.on{background:var(--acc);color:#0b120d;border-color:var(--acc);font-weight:700}
+.chip.add{border-style:dashed;color:var(--acc)}
+main{padding:12px;max-width:760px;margin:auto;padding-bottom:90px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 4px;text-align:center;font-size:14px}
+.tile span{display:block;font-size:26px;margin-bottom:4px}
+.tile.on{border-color:var(--acc);background:#1b2a12;color:var(--acc);font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:10px}
+.card h3{margin:0 0 8px;font-size:16px}
+.mut{color:var(--mut);font-size:13px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input[type=text],input[type=url],input[type=date],input[type=search],textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;outline:none}
+input:focus,textarea:focus{border-color:var(--acc)}
+textarea{min-height:120px;resize:vertical;line-height:1.7}
+.btn{background:var(--acc);color:#0b120d;border:0;border-radius:12px;padding:10px 16px;font-weight:700}
+.btn.ghost{background:var(--card2);color:var(--txt);border:1px solid var(--line);font-weight:500}
+.btn.red{background:#3a1717;color:var(--red);border:1px solid #5b2323}
+.btn.sm{padding:7px 12px;font-size:14px}
+.st{scroll-margin-top:130px;border-radius:14px;background:var(--card);border:1px solid var(--line);margin-bottom:8px;overflow:hidden}
+.st.open{border-color:var(--acc)}
+.sth{display:flex;align-items:center;gap:10px;padding:11px 12px}
+.sth .n{width:26px;height:26px;border-radius:8px;background:var(--card2);display:grid;place-items:center;font-size:13px;color:var(--mut);flex:none}
+.sth .nm{flex:1;font-size:15px;line-height:1.4}
+.tot{font-weight:800;font-size:15px;min-width:62px;text-align:center;padding:4px 8px;border-radius:10px;background:var(--card2)}
+.tot.full{color:var(--acc)}
+.tot.part{color:var(--yel)}
+.dot{font-size:12px;width:16px;text-align:center}
+.stb{padding:4px 12px 12px;border-top:1px solid var(--line)}
+.lab{display:flex;justify-content:space-between;align-items:center;margin:10px 2px 6px;font-size:14px}
+.lab b{font-size:14px}
+.avg{font-size:13px;color:var(--acc);background:#1b2a12;padding:3px 9px;border-radius:999px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cell{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:6px 4px 8px;text-align:center}
+.cell small{display:block;color:var(--mut);font-size:12px;margin-bottom:2px}
+.cell .v{font-size:22px;font-weight:800}
+.cell.empty .v{color:#4b5d51}
+.cell.cur{border-color:var(--acc);box-shadow:0 0 0 2px #a3e63544}
+.cell.ro{background:#1b2a12;border-color:#2f4a1c}
+.cell.ro .v{color:var(--acc)}
+.nav{display:flex;gap:8px;margin-top:12px}
+.nav .btn{flex:1}
+.pk{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;background:rgba(0,0,0,.35)}
+.pkbox{width:100%;max-width:760px;margin:auto auto 0;background:#101a13;border-top:2px solid var(--acc);border-radius:20px 20px 0 0;padding:10px 12px calc(14px + env(safe-area-inset-bottom))}
+.pkhead{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.pkhead b{flex:1;text-align:center;font-size:15px}
+.wheelw{position:relative;height:220px}
+.wheel{height:220px;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;-webkit-mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent)}
+.wheel::-webkit-scrollbar{display:none}
+.wheel div{height:44px;line-height:44px;text-align:center;font-size:24px;scroll-snap-align:center;color:var(--mut)}
+.wheel div.sel{color:var(--acc);font-weight:800;font-size:28px}
+.wheel .pad{height:88px;scroll-snap-align:none}
+.band{position:absolute;top:88px;left:10%;right:10%;height:44px;border-top:1px solid var(--acc);border-bottom:1px solid var(--acc);pointer-events:none;opacity:.5}
+.tbl{overflow:auto;border:1px solid var(--line);border-radius:14px;max-height:70vh}
+table{border-collapse:collapse;font-size:14px;min-width:100%}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:center}
+th{position:sticky;top:0;background:var(--card2);z-index:2;font-size:13px}
+td.nm,th.nm{position:sticky;right:0;background:var(--card);text-align:right;z-index:1}
+th.nm{z-index:3;background:var(--card2)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1b2a12;border:1px solid var(--acc);color:var(--txt);padding:10px 16px;border-radius:12px;z-index:60;font-size:14px;max-width:90%;text-align:center}
+.toast.err{border-color:var(--red);background:#2a1212}
+.sline{display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid var(--line)}
+.sline:last-child{border-bottom:0}
+.sline .nm{flex:1}
+.sline input{padding:6px 10px}
+.qbar{font-size:13px;color:var(--yel);text-align:center;margin-bottom:8px}
+.loading{text-align:center;padding:30px;color:var(--mut)}
+.upd ul{margin:6px 0 10px;padding-inline-start:20px}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <h1>📘 سجل الدرجات</h1>
+    <button class="ib" id="bUpd" title="تحديث">⟳<span class="badge hide" id="updBadge">1</span></button>
+    <button class="ib" id="bSet" title="الإعدادات">⚙️</button>
+  </div>
+  <div class="chips" id="clsChips"></div>
+</header>
+
+<main>
+  <div class="card upd hide" id="updCard"></div>
+
+  <div class="card hide" id="setCard">
+    <h3>⚙️ الإعدادات</h3>
+    <div class="mut">رابط الشيت (<b>Apps Script URL</b>) بيتحط مرة واحدة بس</div>
+    <input type="url" id="apiIn" placeholder="https://script.google.com/macros/s/.../exec" style="margin:8px 0" dir="ltr">
+    <div class="row"><button class="btn" id="apiSave">حفظ واختبار</button><button class="btn ghost" id="setClose">قفل</button></div>
+  </div>
+
+  <div class="card hide" id="addClsCard">
+    <h3>➕ فصل جديد</h3>
+    <input type="text" id="newCls" placeholder="اسم الفصل، مثال: 3/3">
+    <div class="mut" style="margin:8px 0 4px">أسماء الطلاب، كل اسم في سطر</div>
+    <textarea id="newClsNames" placeholder="احمد ابراهيم على احمد"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" id="addClsGo">إنشاء الفصل</button>
+      <button class="btn ghost sm" id="seed33">📋 أسماء فصل 3/3 من الدفتر</button>
+      <button class="btn ghost sm" id="addClsClose">قفل</button>
+    </div>
+  </div>
+
+  <div id="noApi" class="card hide">
+    <h3>👋 أهلاً</h3>
+    <div>دوس ⚙️ فوق وحط رابط الشيت عشان التطبيق يشتغل.</div>
+  </div>
+
+  <div class="tiles" id="tiles">
+    <button class="tile on" data-v="rasd"><span>📝</span>رصد الدرجات</button>
+    <button class="tile" data-v="res"><span>📊</span>النتائج</button>
+    <button class="tile" data-v="stu"><span>👥</span>الطلاب</button>
+  </div>
+
+  <div class="qbar hide" id="qbar"></div>
+
+  <section id="v-rasd">
+    <div class="chips" id="wkChips" style="padding-top:0;margin-bottom:8px"></div>
+    <div class="card hide" id="addWkCard">
+      <h3>📅 أسبوع جديد</h3>
+      <input type="text" id="wkName" style="margin-bottom:8px">
+      <input type="date" id="wkDate">
+      <div class="row" style="margin-top:8px"><button class="btn" id="addWkGo">إضافة الأسبوع</button><button class="btn ghost" id="addWkClose">قفل</button></div>
+    </div>
+    <div id="rasdBody"></div>
+  </section>
+
+  <section id="v-res" class="hide"><div id="resBody"></div></section>
+  <section id="v-stu" class="hide"><div id="stuBody"></div></section>
+</main>
+
+<div class="pk hide" id="pk">
+  <div class="pkbox">
+    <div class="pkhead">
+      <button class="btn sm" id="pkOk">✓ تم</button>
+      <b id="pkT"></b>
+      <button class="btn ghost sm" id="pkNext">الخانة الجاية ‹</button>
+    </div>
+    <div class="wheelw"><div class="wheel" id="wheel"></div><div class="band"></div></div>
+  </div>
+</div>
+
+<script>
+const APP_V = 1;
+const DEFAULT_API = '';
+const TOKEN = 'hana-math-2027';
+const W = 11;                       // أعمدة الأسبوع في الشيت
+const ORDER = [0,2,4,1,3,5,8,9];    // ترتيب الخانات على الشاشة
+const LABEL = {0:'ك حصة • الدرس 1',2:'ك حصة • الدرس 2',4:'ك حصة • الدرس 3',1:'ك واجب • الدرس 1',3:'ك واجب • الدرس 2',5:'ك واجب • الدرس 3',8:'التقييم الأسبوعي',9:'السلوك والمواظبة'};
+const MAX = i => i===8 ? 10 : 5;
+const SEED33 = `احمد ابراهيم على احمد
+احمد عبد السلام شحات ابراهيم
+جبريل عبد السلام احمد سليمان
+حسن محمد بدري شحات
+شعبان مصطفى ابراهيم محمد
+طه عبد الهادي سليمان جاد
+عبد الرحمن محمد سيد عبد العظيم
+على مصطفى حسين محمود
+مازن خالد ابراهيم محمود
+محمد قرباوي حسيب عبد الرحمن
+مصطفى عبد الوهاب مصطفى سليمان
+مصطفى نصر احمد نصر
+مؤمن طه احمد يس
+ياسين كمال عثمان شحات
+ابرار محمد سعد نجار محمد
+اسراء على عبد الحي جاد
+الزهراء صلاح الدين محمود حسن
+ايتن احمد محمد احمد
+بيشاور عبد السلام ابو القاسم صادق
+جودي محمد سعد سرور
+ريفان صالح احمد مدني
+ريم محمد عبد الرحيم حسن
+سارة مدحت الدقاوي على
+سدرة فيصل محمد ابو المجد
+سما رمضان سيد عبد الرضى`;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const LS = {get:(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}, set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+const S = {
+  api: LS.get('api', DEFAULT_API), classes: LS.get('classes', []), cls: LS.get('cls', ''),
+  d: null, wk: 0, open: -1, cur: -1, view: 'rasd', q: LS.get('q', []), search: '', sending: false
+};
+
+/* ---------- أدوات ---------- */
+function toast(msg, err){ const t=document.createElement('div'); t.className='toast'+(err?' err':''); t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(), err?4200:2200); }
+async function api(action, p={}){
+  if(!S.api) throw new Error('حط رابط الشيت من ⚙️ الإعدادات');
+  let r;
+  try{ r = await fetch(S.api, {method:'POST', body: JSON.stringify(Object.assign({token:TOKEN, action}, p))}); }
+  catch(e){ const er=new Error('مفيش نت أو الرابط غلط'); er.net=true; throw er; }
+  let j; try{ j = await r.json(); }catch(e){ throw new Error('الرابط مش راجع بيانات — اتأكد إن النشر Anyone'); }
+  if(!j.ok){
+    if(j.error==='unknown action') throw new Error('كود الشيت لسه قديم — حدّثه وانشره إصدار جديد');
+    if(j.error==='bad token') throw new Error('كود الشيت مش مطابق للتطبيق');
+    throw new Error(j.error || 'حصل خطأ');
+  }
+  return j;
+}
+const num = v => (v===''||v==null) ? null : +v;
+const r1 = x => Math.round(x*10 + 1e-9)/10;
+function calc(b){
+  const av = idx => { const n=idx.map(i=>num(b[i])).filter(x=>x!=null); return n.length ? r1(n.reduce((a,c)=>a+c,0)/n.length) : ''; };
+  b[6] = av([0,2,4]); b[7] = av([1,3,5]);
+  const parts = [6,7,8,9].map(i=>num(b[i])).filter(x=>x!=null);
+  b[10] = parts.length ? r1(parts.reduce((a,c)=>a+c,0)) : '';
+  return b;
+}
+const fmt = v => (v===''||v==null) ? '—' : String(v);
+function blk(i, k){ // مرجع لبيانات أسبوع طالب
+  const row = S.d.vals[i]; const need=(k+1)*W; while(row.length<need) row.push('');
+  return row.slice(k*W, need);
+}
+function setBlk(i, k, b){ const row=S.d.vals[i]; for(let j=0;j<W;j++) row[k*W+j]=b[j]; }
+function filled(b){ return ORDER.filter(i=>b[i]!=='' && b[i]!=null).length; }
+function cacheD(){ LS.set('d_'+S.cls, S.d); }
+
+/* ---------- الطابور (حفظ أوفلاين) ---------- */
+const timers = {};
+function scheduleSave(i){
+  const k=S.wk, key=S.cls+'|'+i+'|'+k;
+  clearTimeout(timers[key]);
+  markPending(i, true);
+  timers[key] = setTimeout(()=>{
+    const b=blk(i,k);
+    const item={cls:S.cls, row:i, name:S.d.names[i], week:k, vals:ORDER.slice().sort((a,b)=>a-b).map(x=>b[x])};
+    S.q = S.q.filter(x=>!(x.cls===item.cls && x.row===item.row && x.week===item.week));
+    S.q.push(item); LS.set('q', S.q); flush();
+  }, 700);
+}
+function markPending(i, on){ const el=document.querySelector(`.st[data-i="${i}"] .dot`); if(el) el.textContent = on ? '⏳' : '✓'; }
+async function flush(){
+  if(S.sending || !S.q.length) { qbar(); return; }
+  S.sending = true; qbar();
+  while(S.q.length){
+    const it=S.q[0];
+    try{ await api('save', it); S.q.shift(); LS.set('q', S.q); if(it.cls===S.cls && it.week===S.wk) markPending(it.row,false); }
+    catch(e){ if(e.net) break; S.q.shift(); LS.set('q', S.q); toast('ما اتحفظش: '+e.message, true); }
+  }
+  S.sending = false; qbar();
+}
+function qbar(){ const el=$('#qbar'); if(S.q.length){ el.textContent = `⏳ ${S.q.length} تعديل مستني النت عشان يتحفظ في الشيت`; el.classList.remove('hide'); } else el.classList.add('hide'); }
+addEventListener('online', flush);
+
+/* ---------- تحميل ---------- */
+async function loadClasses(){
+  try{ const j=await api('classes'); S.classes=j.classes; LS.set('classes', S.classes); }
+  catch(e){ if(!e.net) toast(e.message, true); }
+  if(!S.classes.includes(S.cls)) S.cls = S.classes[0] || '';
+  LS.set('cls', S.cls); renderCls();
+  if(S.cls) await loadClass(); else { S.d=null; render(); if(S.api) openAddCls(true); }
+}
+async function loadClass(){
+  const cached = LS.get('d_'+S.cls, null);
+  if(cached){ S.d=cached; S.wk=Math.min(LS.get('wk_'+S.cls, cached.weeks.length-1), cached.weeks.length-1); if(S.wk<0)S.wk=0; render(); }
+  else { S.d=null; $('#rasdBody').innerHTML='<div class="loading">⏳ بيحمّل…</div>'; }
+  try{
+    const j = await api('getClass', {cls:S.cls});
+    // ضيف تعديلات الطابور اللي لسه ماتبعتتش
+    S.d = {names:j.names, weeks:j.weeks, vals:j.vals.map(r=>r.slice()), url:j.url};
+    S.q.filter(x=>x.cls===S.cls).forEach(x=>{ const i=S.d.names.indexOf(x.name); if(i<0) return; const b=blk(i,x.week); ORDER.slice().sort((a,c)=>a-c).forEach((idx,n)=>b[idx]=x.vals[n]); setBlk(i,x.week,calc(b)); });
+    let wk = LS.get('wk_'+S.cls, j.weeks.length-1); if(wk>j.weeks.length-1) wk=j.weeks.length-1; if(wk<0) wk=0; S.wk=wk;
+    cacheD(); render();
+  }catch(e){ if(!S.d){ $('#rasdBody').innerHTML=`<div class="card">⚠️ ${esc(e.message)}</div>`; } else if(!e.net) toast(e.message,true); }
+}
+
+/* ---------- رسم ---------- */
+function renderCls(){
+  $('#clsChips').innerHTML = S.classes.map(c=>`<button class="chip ${c===S.cls?'on':''}" data-c="${esc(c)}">فصل ${esc(c)}</button>`).join('') + `<button class="chip add" data-c="+">＋ فصل</button>`;
+  $('#noApi').classList.toggle('hide', !!S.api);
+}
+function render(){
+  ['rasd','res','stu'].forEach(v=>$('#v-'+v).classList.toggle('hide', S.view!==v));
+  document.querySelectorAll('.tile').forEach(t=>t.classList.toggle('on', t.dataset.v===S.view));
+  if(!S.d){ $('#rasdBody').innerHTML = S.cls ? '' : '<div class="card mut">مفيش فصول لسه — دوس «＋ فصل».</div>'; $('#wkChips').innerHTML=''; $('#resBody').innerHTML=''; $('#stuBody').innerHTML=''; return; }
+  if(S.view==='rasd') renderRasd(); else if(S.view==='res') renderRes(); else renderStu();
+}
+function renderWeeks(){
+  $('#wkChips').innerHTML = S.d.weeks.map((w,k)=>`<button class="chip ${k===S.wk?'on':''}" data-k="${k}">${esc(w)}</button>`).join('') + `<button class="chip add" data-k="+">＋ أسبوع</button>`;
+  const on=$('#wkChips .chip.on'); if(on) on.scrollIntoView({inline:'center',block:'nearest'});
+}
+function renderRasd(){
+  renderWeeks();
+  const B=$('#rasdBody');
+  if(!S.d.weeks.length){ B.innerHTML='<div class="card">📅 مفيش أسابيع لسه — دوس «＋ أسبوع» وابدأ الرصد.</div>'; return; }
+  if(!S.d.names.length){ B.innerHTML='<div class="card">👥 مفيش طلاب — ضيفهم من «الطلاب».</div>'; return; }
+  const k=S.wk;
+  const empty9 = S.d.names.filter((_,i)=>blk(i,k)[9]==='').length;
+  let h = `<div class="row" style="margin-bottom:10px"><input type="search" id="srch" placeholder="🔎 دوّر على اسم الطالب" value="${esc(S.search)}" style="flex:1"></div>`;
+  if(empty9) h += `<button class="btn ghost sm" id="bulk9" style="margin-bottom:10px;width:100%">⚡ سلوك ومواظبة 5 لـ ${empty9} طالب فاضيين</button>`;
+  h += S.d.names.map((n,i)=>stuCard(i)).join('');
+  B.innerHTML = h;
+  applySearch();
+}
+function stuCard(i){
+  const k=S.wk, b=blk(i,k), f=filled(b), open=S.open===i;
+  const pending = S.q.some(x=>x.cls===S.cls && x.row===i && x.week===k);
+  const totCls = f===8 ? 'full' : f ? 'part' : '';
+  let h = `<div class="st ${open?'open':''}" data-i="${i}" data-name="${esc(S.d.names[i])}">
+    <div class="sth" data-tap="${i}"><span class="n">${i+1}</span><span class="nm">${esc(S.d.names[i])}</span><span class="dot">${pending?'⏳':''}</span><span class="tot ${totCls}">${fmt(b[10])}<small style="color:var(--mut);font-weight:400">/25</small></span></div>`;
+  if(open){
+    const c = idx => `<div class="cell ${b[idx]===''?'empty':''} ${S.cur===idx?'cur':''}" data-cell="${idx}"><small>${idx===8?'من 10':idx===9?'من 5':'الدرس '+(Math.floor(idx/2)+1)}</small><div class="v">${fmt(b[idx])}</div></div>`;
+    h += `<div class="stb">
+      <div class="lab"><b>📗 كراسة الحصة</b><span class="avg">المتوسط ${fmt(b[6])} / 5</span></div>
+      <div class="g3">${c(0)}${c(2)}${c(4)}</div>
+      <div class="lab"><b>📕 كراسة الواجب</b><span class="avg">المتوسط ${fmt(b[7])} / 5</span></div>
+      <div class="g3">${c(1)}${c(3)}${c(5)}</div>
+      <div class="lab"><b>⭐ التقييم والسلوك</b></div>
+      <div class="g3"><div class="cell ${b[8]===''?'empty':''} ${S.cur===8?'cur':''}" data-cell="8"><small>تقييم أسبوعي /10</small><div class="v">${fmt(b[8])}</div></div>
+        <div class="cell ${b[9]===''?'empty':''} ${S.cur===9?'cur':''}" data-cell="9"><small>سلوك ومواظبة /5</small><div class="v">${fmt(b[9])}</div></div>
+        <div class="cell ro"><small>المجموع /25</small><div class="v">${fmt(b[10])}</div></div></div>
+      <div class="nav"><button class="btn ghost" data-prev="${i}">› السابق</button><button class="btn" data-next="${i}">التالي ‹</button></div>
+    </div>`;
+  }
+  return h + '</div>';
+}
+function refreshCard(i){ const el=document.querySelector(`.st[data-i="${i}"]`); if(!el) return; el.outerHTML = stuCard(i); }
+function applySearch(){
+  const q=S.search.trim();
+  document.querySelectorAll('#rasdBody .st').forEach(el=>el.classList.toggle('hide', q && !el.dataset.name.includes(q)));
+}
+function openStu(i, cell){
+  const prev=S.open; S.open=i; S.cur = cell==null ? -1 : cell;
+  if(prev>=0 && prev!==i) refreshCard(prev);
+  refreshCard(i);
+  const el=document.querySelector(`.st[data-i="${i}"]`); if(el) el.scrollIntoView({block:'start', behavior:'smooth'});
+}
+function renderRes(){
+  const d=S.d;
+  if(!d.weeks.length){ $('#resBody').innerHTML='<div class="card">مفيش أسابيع لسه.</div>'; return; }
+  let h = `<div class="card"><div class="row" style="justify-content:space-between"><b>📊 مجموع كل أسبوع من 25</b>${d.url?`<a class="btn ghost sm" href="${esc(d.url)}" target="_blank" style="text-decoration:none">📄 افتح الشيت</a>`:''}</div></div>`;
+  h += `<div class="tbl"><table><thead><tr><th class="nm">الطالب</th>${d.weeks.map(w=>`<th>${esc(w)}</th>`).join('')}<th>المتوسط</th></tr></thead><tbody>`;
+  d.names.forEach((n,i)=>{
+    const t = d.weeks.map((_,k)=>blk(i,k)[10]);
+    const nn = t.map(num).filter(x=>x!=null);
+    const av = nn.length ? r1(nn.reduce((a,c)=>a+c,0)/nn.length) : '';
+    h += `<tr><td class="nm">${i+1}. ${esc(n)}</td>${t.map(v=>`<td>${fmt(v)}</td>`).join('')}<td style="color:var(--acc);font-weight:700">${fmt(av)}</td></tr>`;
+  });
+  $('#resBody').innerHTML = h + '</tbody></table></div>';
+}
+function renderStu(){
+  const d=S.d;
+  let h = `<div class="card"><h3>➕ إضافة طلاب لفصل ${esc(S.cls)}</h3><textarea id="addNames" placeholder="كل اسم في سطر"></textarea><button class="btn" id="addNamesGo" style="margin-top:8px">إضافة</button></div>`;
+  h += `<div class="card"><h3>👥 الطلاب (${d.names.length})</h3>` + d.names.map((n,i)=>`<div class="sline" data-i="${i}"><span class="mut">${i+1}</span><span class="nm">${esc(n)}</span><button class="btn ghost sm" data-ren="${i}">✏️</button><button class="btn red sm" data-del="${i}">🗑️</button></div>`).join('') + `</div>`;
+  if(d.weeks.length) h += `<div class="card"><h3>📅 الأسابيع</h3>` + d.weeks.map((w,k)=>`<div class="sline"><span class="nm">${esc(w)}</span><button class="btn red sm" data-delwk="${k}">🗑️</button></div>`).join('') + `</div>`;
+  $('#stuBody').innerHTML = h;
+}
+
+/* ---------- عجلة الاختيار ---------- */
+let PK = null;
+function openPicker(i, idx){
+  const max=MAX(idx), vals=[''];
+  for(let v=0; v<=max+1e-9; v+=0.5) vals.push(r1(v));
+  PK = {i, idx, vals};
+  const b=blk(i,S.wk);
+  $('#pkT').textContent = LABEL[idx];
+  $('#wheel').innerHTML = '<div class="pad"></div>' + vals.map((v,n)=>`<div data-n="${n}">${v===''?'—':v}</div>`).join('') + '<div class="pad"></div>';
+  $('#pk').classList.remove('hide');
+  let n = vals.findIndex(v=>v!=='' && b[idx]!=='' && +v===+b[idx]); if(n<0) n = b[idx]==='' ? (idx===9?vals.length-1:0) : 0;
+  PK.n = -1;
+  requestAnimationFrame(()=>{ $('#wheel').scrollTop = n*44; highlight(n); if(b[idx]==='' && idx===9) applyN(n); });
+  S.cur = idx; refreshCard(i);
+}
+function highlight(n){ document.querySelectorAll('#wheel div[data-n]').forEach(el=>el.classList.toggle('sel', +el.dataset.n===n)); }
+function applyN(n){
+  if(!PK || n===PK.n) return; PK.n=n;
+  const {i, idx, vals}=PK, b=blk(i,S.wk);
+  const v = vals[n];
+  if(b[idx]===v) return;
+  b[idx]=v; setBlk(i,S.wk,calc(b)); cacheD(); scheduleSave(i); refreshCard(i);
+}
+let wT=null;
+$('#wheel').addEventListener('scroll', ()=>{
+  const n=Math.round($('#wheel').scrollTop/44); highlight(n);
+  clearTimeout(wT); wT=setTimeout(()=>applyN(Math.round($('#wheel').scrollTop/44)), 130);
+});
+$('#wheel').addEventListener('click', e=>{ const el=e.target.closest('div[data-n]'); if(el){ $('#wheel').scrollTo({top:+el.dataset.n*44, behavior:'smooth'}); } });
+function closePicker(){ if(PK){ applyN(Math.round($('#wheel').scrollTop/44)); } $('#pk').classList.add('hide'); const i=PK&&PK.i; PK=null; S.cur=-1; if(i!=null) refreshCard(i); }
+$('#pkOk').onclick = closePicker;
+$('#pk').addEventListener('click', e=>{ if(e.target.id==='pk') closePicker(); });
+$('#pkNext').onclick = ()=>{
+  if(!PK) return; applyN(Math.round($('#wheel').scrollTop/44));
+  const {i, idx}=PK, p=ORDER.indexOf(idx);
+  if(p<ORDER.length-1){ openPicker(i, ORDER[p+1]); }
+  else if(i<S.d.names.length-1){ $('#pk').classList.add('hide'); PK=null; openStu(i+1, ORDER[0]); setTimeout(()=>openPicker(i+1, ORDER[0]), 250); }
+  else closePicker();
+};
+
+/* ---------- أحداث ---------- */
+$('#tiles').onclick = e=>{ const t=e.target.closest('.tile'); if(!t) return; S.view=t.dataset.v; render(); };
+$('#clsChips').onclick = e=>{
+  const c=e.target.closest('.chip'); if(!c) return;
+  if(c.dataset.c==='+'){ openAddCls(); return; }
+  S.cls=c.dataset.c; LS.set('cls',S.cls); S.open=-1; S.search=''; renderCls(); loadClass();
+};
+$('#wkChips').onclick = e=>{
+  const c=e.target.closest('.chip'); if(!c) return;
+  if(c.dataset.k==='+'){ const n=S.d.weeks.length+1; $('#wkName').value='الأسبوع '+n; $('#wkDate').value=new Date().toISOString().slice(0,10); $('#addWkCard').classList.remove('hide'); return; }
+  S.wk=+c.dataset.k; LS.set('wk_'+S.cls,S.wk); S.open=-1; renderRasd();
+};
+$('#addWkClose').onclick = ()=>$('#addWkCard').classList.add('hide');
+$('#addWkGo').onclick = async ()=>{
+  const nm=$('#wkName').value.trim(); if(!nm) return;
+  const dt=$('#wkDate').value; const label = dt ? `${nm} • ${dt.slice(8,10)}/${dt.slice(5,7)}` : nm;
+  const btn=$('#addWkGo'); btn.disabled=true;
+  try{ await api('addWeek',{cls:S.cls,label}); $('#addWkCard').classList.add('hide'); LS.set('wk_'+S.cls, S.d.weeks.length); await loadClass(); toast('✅ اتضاف '+nm); }
+  catch(e){ toast(e.message,true); } btn.disabled=false;
+};
+$('#rasdBody').addEventListener('click', e=>{
+  const cell=e.target.closest('[data-cell]'); const st=e.target.closest('.st');
+  if(cell && st){ openPicker(+st.dataset.i, +cell.dataset.cell); return; }
+  const tap=e.target.closest('[data-tap]');
+  if(tap){ const i=+tap.dataset.tap; if(S.open===i){ S.open=-1; refreshCard(i); } else openStu(i); return; }
+  const nx=e.target.closest('[data-next]'); if(nx){ const i=+nx.dataset.next; if(i<S.d.names.length-1) openStu(i+1); else { S.open=-1; refreshCard(i); toast('✅ خلصت آخر طالب'); } return; }
+  const pv=e.target.closest('[data-prev]'); if(pv){ const i=+pv.dataset.prev; if(i>0) openStu(i-1); return; }
+  if(e.target.id==='bulk9'){
+    const b9=e.target;
+    if(!b9.dataset.ok){ b9.dataset.ok=1; b9.textContent='اضغط تاني للتأكيد ✔'; setTimeout(()=>{ if(b9.isConnected){ delete b9.dataset.ok; renderRasd(); } }, 3000); return; }
+    S.d.names.forEach((_,i)=>{ const b=blk(i,S.wk); if(b[9]===''){ b[9]=5; setBlk(i,S.wk,calc(b)); scheduleSave(i);} });
+    cacheD(); renderRasd(); toast('✅ اتحطت 5 درجات سلوك');
+  }
+});
+$('#rasdBody').addEventListener('input', e=>{ if(e.target.id==='srch'){ S.search=e.target.value; applySearch(); } });
+$('#stuBody').addEventListener('click', async e=>{
+  const t=e.target;
+  if(t.id==='addNamesGo'){
+    const names=$('#addNames').value.split('\n').map(s=>s.trim()).filter(Boolean); if(!names.length) return;
+    t.disabled=true; try{ await api('addStudents',{cls:S.cls,names}); await loadClass(); toast(`✅ اتضاف ${names.length} طالب`); }catch(er){ toast(er.message,true); } t.disabled=false; return;
+  }
+  if(t.dataset.ren!=null){
+    const i=+t.dataset.ren, line=t.closest('.sline');
+    if(t.dataset.save){ const nn=line.querySelector('input').value.trim(); if(!nn) return; t.disabled=true; try{ await api('renameStudent',{cls:S.cls,row:i,old:S.d.names[i],name:nn}); await loadClass(); toast('✅ اتعدّل'); }catch(er){ toast(er.message,true); t.disabled=false; } return; }
+    line.querySelector('.nm').innerHTML=`<input type="text" value="${esc(S.d.names[i])}">`; t.textContent='💾'; t.dataset.save=1; line.querySelector('input').focus(); return;
+  }
+  if(t.dataset.del!=null){
+    const i=+t.dataset.del;
+    if(!t.dataset.ok){ t.dataset.ok=1; t.textContent='متأكد؟'; setTimeout(()=>{ if(t.isConnected){ delete t.dataset.ok; t.textContent='🗑️'; } },3000); return; }
+    t.disabled=true; try{ await api('deleteStudent',{cls:S.cls,row:i,name:S.d.names[i]}); S.open=-1; await loadClass(); toast('🗑️ اتمسح'); }catch(er){ toast(er.message,true); t.disabled=false; } return;
+  }
+  if(t.dataset.delwk!=null){
+    const k=+t.dataset.delwk;
+    if(!t.dataset.ok){ t.dataset.ok=1; t.textContent='هيمسح درجاته! متأكد؟'; setTimeout(()=>{ if(t.isConnected){ delete t.dataset.ok; t.textContent='🗑️'; } },3500); return; }
+    t.disabled=true; try{ await api('deleteWeek',{cls:S.cls,week:k,label:S.d.weeks[k]}); LS.set('wk_'+S.cls, 0); await loadClass(); toast('🗑️ الأسبوع اتمسح'); }catch(er){ toast(er.message,true); t.disabled=false; }
+  }
+});
+function openAddCls(first){ $('#addClsCard').classList.remove('hide'); if(first && !$('#newCls').value){ $('#newCls').value='3/3'; $('#newClsNames').value=SEED33; } }
+$('#addClsClose').onclick = ()=>$('#addClsCard').classList.add('hide');
+$('#seed33').onclick = ()=>{ $('#newCls').value='3/3'; $('#newClsNames').value=SEED33; toast('راجع الأسماء قبل الإنشاء'); };
+$('#addClsGo').onclick = async ()=>{
+  const name=$('#newCls').value.trim(); const names=$('#newClsNames').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(!name) return toast('اكتب اسم الفصل', true);
+  const b=$('#addClsGo'); b.disabled=true;
+  try{ const j=await api('addClass',{name,names}); S.cls=j.cls; LS.set('cls',S.cls); $('#addClsCard').classList.add('hide'); $('#newCls').value=''; $('#newClsNames').value=''; await loadClasses(); toast('✅ اتعمل فصل '+name); }
+  catch(e){ toast(e.message,true); } b.disabled=false;
+};
+$('#bSet').onclick = ()=>{ $('#apiIn').value=S.api; $('#setCard').classList.toggle('hide'); };
+$('#setClose').onclick = ()=>$('#setCard').classList.add('hide');
+$('#apiSave').onclick = async ()=>{
+  const u=$('#apiIn').value.trim(); if(!/^https:\/\/script\.google\.com\//.test(u)) return toast('الرابط لازم يبدأ بـ script.google.com', true);
+  S.api=u; LS.set('api',u);
+  try{ await api('classes'); toast('✅ متوصل بالشيت'); $('#setCard').classList.add('hide'); renderCls(); loadClasses(); }catch(e){ toast(e.message,true); }
+};
+
+/* ---------- التحديثات ---------- */
+let NEWV=null;
+async function checkUpd(show){
+  try{ const r=await fetch('version.json?'+Date.now(),{cache:'no-store'}); const j=await r.json(); NEWV=j;
+    const has = j.v>APP_V; $('#updBadge').classList.toggle('hide', !has);
+    if(has && show){ $('#updCard').innerHTML=`<b>🆕 الجديد في التحديث</b><ul>${(j.notes||[]).map(n=>`<li>${esc(n)}</li>`).join('')}</ul><div class="row"><button class="btn" id="updGo">حدّث دلوقتي</button><button class="btn ghost" id="updLater">بعدين</button></div>`; $('#updCard').classList.remove('hide'); }
+    else if(show){ toast('✅ انت على آخر نسخة'); }
+  }catch(e){ if(show) toast('مفيش نت',true); }
+}
+$('#bUpd').onclick = ()=>checkUpd(true);
+$('#updCard').addEventListener('click', async e=>{
+  if(e.target.id==='updLater') $('#updCard').classList.add('hide');
+  if(e.target.id==='updGo'){ LS.set('justUpd', NEWV); try{ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }catch(_){} location.reload(); }
+});
+(function afterUpd(){ const j=LS.get('justUpd',null); if(j && j.v===APP_V){ localStorage.removeItem('justUpd'); $('#updCard').innerHTML=`<b>✅ اتحدّث</b><ul>${(j.notes||[]).map(n=>`<li>${esc(n)}</li>`).join('')}</ul><button class="btn ghost sm" onclick="this.parentNode.classList.add('hide')">تمام</button>`; $('#updCard').classList.remove('hide'); } })();
+
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+renderCls(); render(); qbar();
+if(S.api){ loadClasses(); flush(); }
+checkUpd(false);
+</script>
+</body>
+</html>
