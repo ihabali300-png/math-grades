@@ -88,6 +88,7 @@ function termFormulas(sh) {
 function addTerm(sh) {
   const s = sh.getLastColumn() + 1;
   if (sh.getMaxColumns() < s + T - 1) sh.insertColumnsAfter(sh.getMaxColumns(), s + T - 1 - sh.getMaxColumns());
+  sh.getRange(1, s, HDR, T).getMergedRanges().forEach(r => r.breakApart());
   sh.getRange(1, s, 1, T).merge().setValue('🏁 اختبارات التيرم').setFontWeight('bold').setHorizontalAlignment('center').setBackground('#9fa8da');
   sh.getRange(HDR, s, 1, T).setValues([TSUB]).setFontWeight('bold').setWrap(true).setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground('#e8eaf6');
   sh.getRange(HDR, s + 4).setBackground('#c5cae9');
@@ -175,6 +176,7 @@ const ACTIONS = {
     sh.insertColumnsBefore(s, W);
     sh.getRange(1, s, Math.max(HDR + n, HDR), W).clear();
     const color = COLORS[k % 2];
+    sh.getRange(1, s, HDR, W).getMergedRanges().forEach(r => r.breakApart());
     sh.getRange(1, s, 1, W).merge().setValue(String(b.label || ('الأسبوع ' + (k + 1))))
       .setFontWeight('bold').setHorizontalAlignment('center').setBackground('#a5d6a7');
     sh.getRange(HDR, s, 1, W).setValues([SUB]).setFontWeight('bold').setWrap(true)
